@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { C, FONT } from "./constants/tokens";
-import { COURSES } from "./constants/data";
+import { COURSES, TEACHER_COURSES } from "./constants/data";
 import { TopBar } from "./components/TopBar";
 import { Button } from "./components/Button";
 import { Landing } from "./pages/Landing";
@@ -9,6 +9,7 @@ import { StudentHome } from "./pages/student/StudentHome";
 import { Lesson } from "./pages/student/Lesson";
 import { Quiz } from "./pages/student/Quiz";
 import { QuizResult } from "./pages/student/QuizResult";
+import { TeacherCatalog } from "./pages/teacher/TeacherCatalog";
 import { TeacherDashboard } from "./pages/teacher/TeacherDashboard";
 import { StudentDetail } from "./pages/teacher/StudentDetail";
 
@@ -19,10 +20,12 @@ export default function App() {
   const [course, setCourse] = useState(COURSES[0]);
   const [mode, setMode] = useState("visual");
   const [result, setResult] = useState(null);
-  const [tView, setTView] = useState("dashboard");
+  const [tView, setTView] = useState("catalog");
+  const [teacherCourses, setTeacherCourses] = useState(TEACHER_COURSES);
+  const [activeCourse, setActiveCourse] = useState(null);
   const [activeStudent, setActiveStudent] = useState(null);
 
-  const logout = () => { setRole(null); setSView("assessment"); setTView("dashboard"); };
+  const logout = () => { setRole(null); setSView("assessment"); setTView("catalog"); };
 
   let body;
   if (!role) body = <Landing onPick={(r) => { setRole(r); }} />;
@@ -42,11 +45,28 @@ export default function App() {
       </>
     );
   } else {
+    const topBarRight = tView === "dashboard"
+      ? <Button variant="ghost" onClick={() => setTView("catalog")} style={{ color: C.brand }}>My courses</Button>
+      : tView === "student"
+      ? <Button variant="ghost" onClick={() => setTView("dashboard")} style={{ color: C.brand }}>Dashboard</Button>
+      : null;
     body = (
       <>
-        <TopBar role="teacher" onLogout={logout}
-          right={tView === "student" && <Button variant="ghost" onClick={() => setTView("dashboard")} style={{ color: C.brand }}>Dashboard</Button>} />
-        {tView === "dashboard" && <TeacherDashboard onStudent={(s) => { setActiveStudent(s); setTView("student"); }} />}
+        <TopBar role="teacher" onLogout={logout} right={topBarRight} />
+        {tView === "catalog" && (
+          <TeacherCatalog
+            courses={teacherCourses}
+            onSelect={(c) => { setActiveCourse(c); setTView("dashboard"); }}
+            onCreateCourse={(c) => setTeacherCourses((prev) => [...prev, c])}
+          />
+        )}
+        {tView === "dashboard" && (
+          <TeacherDashboard
+            course={activeCourse}
+            onBack={() => setTView("catalog")}
+            onStudent={(s) => { setActiveStudent(s); setTView("student"); }}
+          />
+        )}
         {tView === "student" && <StudentDetail student={activeStudent} onBack={() => setTView("dashboard")} />}
       </>
     );
