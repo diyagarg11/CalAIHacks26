@@ -1,52 +1,35 @@
 import { useState } from "react";
-import { Loader2 } from "lucide-react";
-import { C, FONT, DISPLAY } from "./constants/tokens";
-import { COURSES } from "./constants/data";
-// import { useAuth } from "./auth/AuthProvider";
+import { C, FONT } from "./constants/tokens";
+import { COURSES, TEACHER_COURSES } from "./constants/data";
 import { TopBar } from "./components/TopBar";
-import { TriMark } from "./components/TriMark";
 import { Button } from "./components/Button";
 import { Landing } from "./pages/Landing";
-// import { Auth } from "./pages/Auth";
 import { Assessment } from "./pages/student/Assessment";
 import { StudentHome } from "./pages/student/StudentHome";
 import { Lesson } from "./pages/student/Lesson";
 import { Quiz } from "./pages/student/Quiz";
 import { QuizResult } from "./pages/student/QuizResult";
+import { TeacherCatalog } from "./pages/teacher/TeacherCatalog";
 import { TeacherDashboard } from "./pages/teacher/TeacherDashboard";
 import { StudentDetail } from "./pages/teacher/StudentDetail";
-// import { MfaSetup } from "./pages/MfaSetup";
 
 export default function App() {
-  // const { user, role: authRole, name, loading, signOut } = useAuth();
-
   const [role, setRole] = useState(null);
   const [sView, setSView] = useState("assessment");
   const [prefs, setPrefs] = useState({ visual: 8, audio: 5, text: 6 });
   const [course, setCourse] = useState(COURSES[0]);
   const [mode, setMode] = useState("visual");
   const [result, setResult] = useState(null);
-  const [tView, setTView] = useState("dashboard");
+  const [tView, setTView] = useState("catalog");
+  const [teacherCourses, setTeacherCourses] = useState(TEACHER_COURSES);
+  const [activeCourse, setActiveCourse] = useState(null);
   const [activeStudent, setActiveStudent] = useState(null);
-  const [showMfa, setShowMfa] = useState(false);
 
-  const logout = () => {
-    setRole(null);
-    setSView("assessment");
-    setTView("dashboard");
-  };
+  const logout = () => { setRole(null); setSView("assessment"); setTView("catalog"); };
 
   let body;
-  if (!role) {
-    body = <Landing onPick={(r) => setRole(r)} />;
-  // } else if (showMfa) {
-  //   body = (
-  //     <>
-  //       <TopBar role={role} onLogout={logout} />
-  //       <MfaSetup onBack={() => setShowMfa(false)} />
-  //     </>
-  //   );
-  } else if (role === "student") {
+  if (!role) body = <Landing onPick={(r) => { setRole(r); }} />;
+  else if (role === "student") {
     const start = (c) => { setCourse(c); setMode(c.mode); setSView("lesson"); };
     body = (
       <>
@@ -62,11 +45,28 @@ export default function App() {
       </>
     );
   } else {
+    const topBarRight = tView === "dashboard"
+      ? <Button variant="ghost" onClick={() => setTView("catalog")} style={{ color: C.brand }}>My courses</Button>
+      : tView === "student"
+      ? <Button variant="ghost" onClick={() => setTView("dashboard")} style={{ color: C.brand }}>Dashboard</Button>
+      : null;
     body = (
       <>
-        <TopBar role="teacher" onLogout={logout}
-          right={tView === "student" && <Button variant="ghost" onClick={() => setTView("dashboard")} style={{ color: C.brand }}>Dashboard</Button>} />
-        {tView === "dashboard" && <TeacherDashboard onStudent={(s) => { setActiveStudent(s); setTView("student"); }} />}
+        <TopBar role="teacher" onLogout={logout} right={topBarRight} />
+        {tView === "catalog" && (
+          <TeacherCatalog
+            courses={teacherCourses}
+            onSelect={(c) => { setActiveCourse(c); setTView("dashboard"); }}
+            onCreateCourse={(c) => setTeacherCourses((prev) => [...prev, c])}
+          />
+        )}
+        {tView === "dashboard" && (
+          <TeacherDashboard
+            course={activeCourse}
+            onBack={() => setTView("catalog")}
+            onStudent={(s) => { setActiveStudent(s); setTView("student"); }}
+          />
+        )}
         {tView === "student" && <StudentDetail student={activeStudent} onBack={() => setTView("dashboard")} />}
       </>
     );
@@ -79,27 +79,12 @@ export default function App() {
         * { box-sizing: border-box; }
         button:focus-visible, input:focus-visible, [tabindex]:focus-visible { outline: 2px solid ${C.brand}; outline-offset: 2px; }
         input[type=range] { height: 6px; }
-        @keyframes spin { to { transform: rotate(360deg); } }
-        .spin { animation: spin .8s linear infinite; }
         @media (max-width: 720px) {
           [style*="grid-template-columns: 1.3fr"], [style*="grid-template-columns: 1fr 1fr"] { grid-template-columns: 1fr !important; }
         }
         @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
       `}</style>
       {body}
-    </div>
-  );
-}
-
-function Splash() {
-  return (
-    <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column",
-      alignItems: "center", justifyContent: "center", gap: 18 }}>
-      <TriMark s={48} />
-      <div style={{ display: "flex", alignItems: "center", gap: 9, fontFamily: DISPLAY,
-        fontWeight: 700, fontSize: 16, color: C.sub }}>
-        <Loader2 size={18} className="spin" /> Loading your session…
-      </div>
     </div>
   );
 }
