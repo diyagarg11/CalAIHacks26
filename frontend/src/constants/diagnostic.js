@@ -3,10 +3,21 @@
 // the prototype runs standalone with `npm run dev` and no server.
 
 export const ACCOMMODATION_RULES = {
-  audio_narration_required: { label: "Audio narration required", mandate: "audio" },
-  captions_required: { label: "Captions required", constraint: true },
-  no_flashing: { label: "No flashing / rapid transitions", exclude: "visual" },
-  extended_time: { label: "Extended quiz time", constraint: true },
+  // Legacy flags
+  audio_narration_required: { label: "Audio narration required", mandate: "audio", weightBoost: { audio: 4 } },
+  captions_required:        { label: "Captions required", constraint: true },
+  no_flashing:              { label: "No flashing / rapid transitions", exclude: "visual" },
+  extended_time:            { label: "Extended quiz time", constraint: true },
+  // IEP-extracted flags
+  audio_preferred:          { label: "Audio preferred", weightBoost: { audio: 3 } },
+  visual_aids:              { label: "Visual aids", weightBoost: { visual: 3 } },
+  text_preferred:           { label: "Text preferred", weightBoost: { text: 3 } },
+  verbal_response_ok:       { label: "Verbal responses OK", mandate: "audio", weightBoost: { audio: 2 } },
+  chunked_instructions:     { label: "Chunked instructions", constraint: true },
+  reduced_complexity:       { label: "Simplified language", constraint: true },
+  frequent_breaks:          { label: "Frequent breaks", constraint: true },
+  repeat_instructions:      { label: "Repeat instructions", constraint: true },
+  reduced_distractions:     { label: "Reduced distractions", constraint: true },
 };
 
 export const DIAGNOSTIC_LESSON = {

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { C, FONT } from "./constants/tokens";
 import { TEACHER_COURSES } from "./constants/data";
+import { ACCOMMODATION_RULES } from "./constants/diagnostic";
 import { TopBar } from "./components/TopBar";
 import { Button } from "./components/Button";
 import { Landing } from "./pages/Landing";
@@ -14,6 +15,7 @@ import { CourseDetail } from "./pages/student/CourseDetail";
 import { TeacherCatalog } from "./pages/teacher/TeacherCatalog";
 import { TeacherDashboard } from "./pages/teacher/TeacherDashboard";
 import { StudentDetail } from "./pages/teacher/StudentDetail";
+import { IepRoster } from "./pages/teacher/IepRoster";
 import { useAuth } from "./auth/AuthProvider";
 
 export default function App() {
@@ -35,6 +37,14 @@ export default function App() {
   const [teacherCourses, setTeacherCourses] = useState(TEACHER_COURSES);
   const [activeCourse, setActiveCourse] = useState(null);
   const [activeStudent, setActiveStudent] = useState(null);
+  const [accommodationFlags, setAccommodationFlags] = useState([]);
+  const [studentIeps, setStudentIeps] = useState({});
+
+  const handleIepLoad = (studentId, flags) => {
+    setStudentIeps((prev) => ({ ...prev, [studentId]: flags }));
+    // If this student is the logged-in student, apply immediately
+    if (user?.id && String(user.id) === String(studentId)) setAccommodationFlags(flags);
+  };
 
   const logout = () => { signOut(); setPendingRole(null); setSView("assessment"); setTView("catalog"); };
 
@@ -75,6 +85,15 @@ export default function App() {
       }
     }
     next[assignedFormat] = 10;
+    // Apply IEP weight boosts on top of diagnostic scores
+    for (const flag of accommodationFlags) {
+      const rule = ACCOMMODATION_RULES[flag];
+      if (rule?.weightBoost) {
+        for (const [m, boost] of Object.entries(rule.weightBoost)) {
+          next[m] = Math.min(10, (next[m] ?? 5) + boost);
+        }
+      }
+    }
     setPrefs(next);
     setMode(assignedFormat);
     setSView("home");
@@ -100,7 +119,7 @@ export default function App() {
     body = (
       <>
         <TopBar role="student" onLogout={logout} right={topBarRight} />
-        {sView === "assessment"   && <Assessment studentId={1} accommodationFlags={[]} onDone={finishAssessment} />}
+        {sView === "assessment"   && <Assessment studentId={user?.id ?? 1} accommodationFlags={accommodationFlags} onDone={finishAssessment} />}
         {sView === "home"         && <StudentHome prefs={prefs} onOpen={openCourse} />}
         {sView === "courseDetail" && <CourseDetail course={course} history={history} onSelectTopic={openTopic} onBack={() => setSView("home")} />}
         {sView === "lesson"       && <Lesson course={course} topic={activeTopic} mode={mode} setMode={setMode}
@@ -116,11 +135,22 @@ export default function App() {
       </>
     );
   } else {
-    const topBarRight = tView === "dashboard"
-      ? <Button variant="ghost" onClick={() => setTView("catalog")} style={{ color: C.brand }}>My courses</Button>
-      : tView === "student"
-      ? <Button variant="ghost" onClick={() => setTView("dashboard")} style={{ color: C.brand }}>Dashboard</Button>
-      : null;
+    const topBarRight = (
+      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        {tView !== "catalog" && tView !== "iep" && (
+          <Button variant="ghost" onClick={() => setTView("catalog")} style={{ color: C.brand }}>My courses</Button>
+        )}
+        {tView === "student" && (
+          <Button variant="ghost" onClick={() => setTView("dashboard")} style={{ color: C.brand }}>Dashboard</Button>
+        )}
+        <Button
+          variant={tView === "iep" ? "soft" : "ghost"}
+          onClick={() => setTView("iep")}
+          style={{ color: tView === "iep" ? C.brand : C.sub }}>
+          Students &amp; IEPs
+        </Button>
+      </div>
+    );
     body = (
       <>
         <TopBar role="teacher" onLogout={logout} right={topBarRight} />
@@ -138,7 +168,19 @@ export default function App() {
             onStudent={(s) => { setActiveStudent(s); setTView("student"); }}
           />
         )}
-        {tView === "student" && <StudentDetail student={activeStudent} onBack={() => setTView("dashboard")} />}
+        {tView === "student" && (
+          <StudentDetail
+            student={activeStudent}
+            onBack={() => setTView("dashboard")}
+            onIepLoad={(flags) => handleIepLoad(activeStudent?.id, flags)}
+          />
+        )}
+        {tView === "iep" && (
+          <IepRoster
+            onStudent={(s) => { setActiveStudent(s); setTView("student"); }}
+            onIepLoad={handleIepLoad}
+          />
+        )}
       </>
     );
   }
