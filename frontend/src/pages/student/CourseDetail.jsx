@@ -3,6 +3,7 @@ import {
   ChevronLeft, ChevronRight, Check, X,
   ChevronDown, ChevronUp, BookOpen, Headphones, Eye, Search,
 } from "lucide-react";
+import { ChatBot } from "../../components/ChatBot";
 import { C, DISPLAY, FONT, MONO } from "../../constants/tokens";
 import { Card } from "../../components/Card";
 import { Button } from "../../components/Button";
@@ -331,6 +332,8 @@ export function CourseDetail({ course, history = {}, onSelectTopic, onBack }) {
           )}
         </Card>
       </div>
+
+      <ChatBot course={course} />
     </div>
   );
 }
