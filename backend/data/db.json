@@ -1,0 +1,84 @@
+{
+  "students": [
+    {
+      "id": 1,
+      "name": "Maya Chen",
+      "email": "maya.c@school.edu",
+      "mode": "audio",
+      "preferred_format": "audio",
+      "preferred_format_source": "diagnostic",
+      "accommodations": []
+    },
+    {
+      "id": 2,
+      "name": "Liam Patel",
+      "email": "liam.p@school.edu",
+      "mode": "audio",
+      "preferred_format": "audio",
+      "preferred_format_source": "accommodation",
+      "accommodations": [
+        "audio_narration_required"
+      ]
+    },
+    {
+      "id": 3,
+      "name": "Sofia Reyes",
+      "email": "sofia.r@school.edu",
+      "mode": "text",
+      "preferred_format": "text",
+      "preferred_format_source": "diagnostic",
+      "accommodations": [
+        "captions_required"
+      ]
+    }
+  ],
+  "diagnostic_assessments": [
+    {
+      "student_id": 1,
+      "created_at": "2026-06-21T05:03:58.188Z",
+      "status": "completed",
+      "decided_by": "diagnostic",
+      "assigned_format": "audio",
+      "scores": {
+        "text": {
+          "correct": 0,
+          "total": 4,
+          "seconds": 5,
+          "pct": 0
+        },
+        "audio": {
+          "correct": 1,
+          "total": 4,
+          "seconds": 8,
+          "pct": 25
+        },
+        "visual": null
+      },
+      "accommodation": null
+    },
+    {
+      "student_id": 1,
+      "created_at": "2026-06-21T05:05:28.567Z",
+      "status": "completed",
+      "decided_by": "diagnostic",
+      "assigned_format": "audio",
+      "scores": {
+        "text": {
+          "correct": 0,
+          "total": 4,
+          "seconds": 7,
+          "pct": 0
+        },
+        "audio": {
+          "correct": 2,
+          "total": 4,
+          "seconds": 4,
+          "pct": 50
+        },
+        "visual": null
+      },
+      "accommodation": null
+    }
+  ],
+  "content_units": []
+}

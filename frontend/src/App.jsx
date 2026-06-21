@@ -4,6 +4,7 @@ import { TEACHER_COURSES } from "./constants/data";
 import { TopBar } from "./components/TopBar";
 import { Button } from "./components/Button";
 import { Landing } from "./pages/Landing";
+import { Auth } from "./pages/Auth";
 import { Assessment } from "./pages/student/Assessment";
 import { StudentHome } from "./pages/student/StudentHome";
 import { Lesson } from "./pages/student/Lesson";
@@ -13,9 +14,16 @@ import { CourseDetail } from "./pages/student/CourseDetail";
 import { TeacherCatalog } from "./pages/teacher/TeacherCatalog";
 import { TeacherDashboard } from "./pages/teacher/TeacherDashboard";
 import { StudentDetail } from "./pages/teacher/StudentDetail";
+import { useAuth } from "./auth/AuthProvider";
 
 export default function App() {
-  const [role, setRole] = useState(null);
+  const { user, role: authRole, loading, signOut } = useAuth();
+
+  // pendingRole is set when user picks a role on Landing but isn't logged in yet
+  const [pendingRole, setPendingRole] = useState(null);
+
+  // Derive the active role: prefer the one from the auth session, fall back to pending
+  const role = authRole ?? pendingRole;
   const [sView, setSView] = useState("assessment");
   const [prefs, setPrefs] = useState({ visual: 8, audio: 5, text: 6 });
   const [course, setCourse] = useState(null);
@@ -28,7 +36,7 @@ export default function App() {
   const [activeCourse, setActiveCourse] = useState(null);
   const [activeStudent, setActiveStudent] = useState(null);
 
-  const logout = () => { setRole(null); setSView("assessment"); setTView("catalog"); };
+  const logout = () => { signOut(); setPendingRole(null); setSView("assessment"); setTView("catalog"); };
 
   // Weighted random mode selection — draws proportionally from prefs weights,
   // avoids repeating the same mode back-to-back if alternatives exist.
@@ -73,8 +81,17 @@ export default function App() {
   };
 
   let body;
-  if (!role) body = <Landing onPick={(r) => { setRole(r); }} />;
-  else if (role === "student") {
+
+  // While Supabase checks for an existing session, show nothing to avoid flicker
+  if (loading) {
+    body = <div style={{ minHeight: "100vh", background: C.paper }} />;
+  } else if (!role) {
+    // No role chosen yet — show the landing page
+    body = <Landing onPick={(r) => setPendingRole(r)} />;
+  } else if (!user) {
+    // Role chosen but not logged in — show the auth page
+    body = <Auth role={role} onBack={() => setPendingRole(null)} />;
+  } else if (role === "student") {
     const openCourse = (c) => { setCourse(c); setSView("courseDetail"); };
     const openTopic = (t) => { setActiveTopic(t); setMode(pickMode(prefs, mode)); setSView("quiz"); };
     const topBarRight = sView !== "assessment" && (
