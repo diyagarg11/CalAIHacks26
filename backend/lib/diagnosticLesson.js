@@ -123,6 +123,29 @@ const GRADE_STOP = new Set("the a an of to in is are it its and or for that this
 const normG = (s) => s.toLowerCase().replace(/[^a-z0-9\s]/g, " ").replace(/\s+/g, " ").trim();
 const toksG = (s) => normG(s).split(" ").filter((w) => w && !GRADE_STOP.has(w));
 
+// Score transcript overlap against a single option (0–1).
+function overlapScore(transcript, option) {
+  const heard = new Set(toksG(transcript));
+  const optToks = toksG(option);
+  if (!optToks.length) return 0;
+  return optToks.filter((w) => heard.has(w)).length / optToks.length;
+}
+
+// Best-match: find which option the transcript most clearly describes.
+// Returns true only if the correct option wins by a clear margin (0.15) over
+// the second-best, AND its own score clears a minimum threshold (0.3).
+// This prevents "said all options" from counting as correct.
+function spokenCorrect(transcript, options, correctIdx) {
+  if (!transcript) return false;
+  const scores = options.map((opt) => overlapScore(transcript, opt));
+  const best = Math.max(...scores);
+  if (best < 0.3) return false;
+  const bestIdx = scores.indexOf(best);
+  if (bestIdx !== correctIdx) return false;
+  const secondBest = scores.filter((_, i) => i !== bestIdx).reduce((a, b) => Math.max(a, b), 0);
+  return best - secondBest >= 0.15;
+}
+
 export function gradeQuizMixed(format, answers = []) {
   const key = DIAGNOSTIC_LESSON.formats[format].quiz;
   let correct = 0;
@@ -131,19 +154,10 @@ export function gradeQuizMixed(format, answers = []) {
     if (typeof ans === "number") {
       if (ans === item.correct) correct++;
     } else if (typeof ans === "string") {
-      const heard = new Set(toksG(ans));
-      const correctToks = toksG(item.options[item.correct]);
-      if (correctToks.length && correctToks.filter((w) => heard.has(w)).length / correctToks.length >= 0.25) correct++;
+      if (spokenCorrect(ans, item.options, item.correct)) correct++;
     }
   });
   return { correct, total: key.length };
-}
-
-function spokenCorrect(transcript, correctText) {
-  if (!transcript) return false;
-  const heard = new Set(toksG(transcript));
-  const ct = toksG(correctText);
-  return ct.length > 0 && ct.filter((w) => heard.has(w)).length / ct.length >= 0.25;
 }
 
 // Returns a per-question breakdown for the result screen.
@@ -159,7 +173,7 @@ export function buildBreakdown(format, answers = []) {
       wasCorrect = ans === item.correct;
     } else {
       userAnswer = typeof ans === "string" ? ans : null;
-      wasCorrect = spokenCorrect(userAnswer, correctAnswer);
+      wasCorrect = spokenCorrect(userAnswer, item.options, item.correct);
     }
     return { q: item.q, userAnswer: userAnswer || "", correctAnswer, wasCorrect };
   });
