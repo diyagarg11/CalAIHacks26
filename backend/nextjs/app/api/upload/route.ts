@@ -28,14 +28,6 @@ export async function POST(req: NextRequest) {
     if (tooBig)
       return NextResponse.json({ error: `${tooBig.name} exceeds 50 MB limit` }, { status: 400 });
 
-    // Ensure the storage bucket exists
-    const { data: buckets } = await supabaseAdmin.storage.listBuckets();
-    const bucketExists = buckets?.some((b) => b.id === BUCKET);
-    if (!bucketExists) {
-      const { error: bucketErr } = await supabaseAdmin.storage.createBucket(BUCKET, { public: true });
-      if (bucketErr) throw new Error(`Failed to create storage bucket: ${bucketErr.message}`);
-    }
-
     // pdf-parse v2.x uses a class-based API: new PDFParse({ data: buffer })
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const { PDFParse } = require("pdf-parse");
