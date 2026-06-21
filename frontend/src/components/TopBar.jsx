@@ -1,9 +1,9 @@
-import { LogOut } from "lucide-react";
-import { C, DISPLAY, MONO } from "../constants/tokens";
+import { LogOut, ShieldCheck } from "lucide-react";
+import { C, DISPLAY, MONO, FONT } from "../constants/tokens";
 import { Button } from "./Button";
 import { TriMark } from "./TriMark";
 
-export function TopBar({ role, onLogout, right }) {
+export function TopBar({ role, onLogout, onMfaSetup, right }) {
   return (
     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between",
       padding: "14px 22px", borderBottom: `1px solid ${C.line}`, background: C.surface, position: "sticky", top: 0, zIndex: 20 }}>
@@ -15,6 +15,12 @@ export function TopBar({ role, onLogout, right }) {
       </div>
       <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
         {right}
+        {onMfaSetup && (
+          <Button variant="ghost" onClick={onMfaSetup}
+            style={{ color: C.sub, fontSize: 13, fontFamily: FONT }}>
+            <ShieldCheck size={15} /> 2FA
+          </Button>
+        )}
         <Button variant="ghost" onClick={onLogout}><LogOut size={15} /> Sign out</Button>
       </div>
     </div>
