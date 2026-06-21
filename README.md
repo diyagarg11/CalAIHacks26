@@ -1,96 +1,167 @@
-# Triad — multi-modal learning platform
+# Triad — Adaptive Learning Platform
 
-Adaptive learning that teaches each student in the format they actually learn
-best (text / audio / visual), measured rather than self-reported.
+An AI-powered platform that teaches every student in the format they learn best — **text, audio, or visual** — measured by a diagnostic assessment, not self-reported. Teachers upload materials; the system generates multimodal content and tracks per-student performance.
 
-This repo has two parts:
+---
 
-- **`frontend/`** — React + Vite student & teacher app (port 5175)
-- **`backend/nextjs/`** — Next.js API server: assessment, content pipeline, speech, Supabase + Redis (port 3000)
+## Tech stack
 
-## Run it locally
+| Layer | Technology |
+|---|---|
+| Frontend | React + Vite |
+| Backend | Next.js 16 App Router (API routes) |
+| Database | Supabase (Postgres + Storage) |
+| Cache / State | Upstash Redis |
+| AI content | Anthropic Claude (`claude-opus-4-8`) |
+| AI chat | OpenAI GPT-4o mini |
+| Speech | Deepgram (TTS + STT) |
 
-Two terminals.
+---
 
-### 1. Backend
+## Prerequisites
 
-Requires a free [Supabase](https://supabase.com) and [Upstash Redis](https://console.upstash.com) account. See [`backend/nextjs/README.md`](./backend/nextjs/README.md) for full setup.
+- **Node.js 18+**
+- **Supabase** project — [supabase.com](https://supabase.com) (free tier works)
+- **Upstash Redis** database — [console.upstash.com](https://console.upstash.com) (free tier works)
+- **OpenAI API key** — for the student AI tutor chatbot
+- **Anthropic API key** _(optional)_ — for multimodal content generation
+- **Deepgram API key** _(optional)_ — for audio narration + voice quiz answers
+
+---
+
+## Quick start
+
+Open **two terminals**.
+
+### Terminal 1 — Backend (port 3000)
 
 ```bash
 cd backend/nextjs
 npm install
-cp .env.local.example .env.local   # fill in Supabase + Redis keys
-npm run dev                         # http://localhost:3000
+cp .env.local.example .env.local
 ```
 
-Verify: `http://localhost:3000/api/health` → `{"status":"ok","supabase":"connected"}`
+Open `.env.local` and fill in your keys (see [Environment variables](#environment-variables) below), then:
 
-### 2. Frontend
+```bash
+npm run dev
+```
+
+Verify it's working:
+```
+http://localhost:3000/api/health
+→ { "status": "ok", "supabase": "connected" }
+```
+
+### Terminal 2 — Frontend (port 5173)
 
 ```bash
 cd frontend
 npm install
-npm run dev                 # http://localhost:5173
+npm run dev
 ```
 
-The frontend proxies all `/api` calls to the backend on :3000 automatically.
+Open **http://localhost:5173** in your browser.
+
+The frontend automatically proxies all `/api` calls to the backend on :3000 — no extra config needed.
 
 ---
 
-## The initial assessment (student modeling)
+## First-time database setup
 
-A new student's starting format is a **measured baseline, not a preference**.
+Before running the backend, you need to create the database tables:
 
-1. **Accommodation check first.** Teacher-set flags (from an IEP/504) are
-   honored before anything else. A flag that *mandates* a format (e.g. "audio
-   narration required") **skips the diagnostic** and assigns that format
-   directly — the adaptive engine can never override an accommodation. Flags
-   that only *constrain* delivery (captions) or *exclude* one format (no
-   flashing → excludes visual) don't block the diagnostic.
-2. **Two formats, randomized order.** The same ~90-second neutral lesson ("why
-   the sky is blue") is shown as **text** and as **audio**, in random order to
-   avoid order bias. The audio narration uses the browser's speech synthesis.
-3. **Comprehension quiz after each.** A short quiz follows each format. We show
-   **no feedback between formats** — since both formats cover the *same* content,
-   revealing answers would let the second quiz be gamed.
-4. **Higher score wins.** The format with higher comprehension becomes the
-   student's `preferred_format`. Ties break on faster completion.
+1. Go to your Supabase project → **SQL Editor** → **New query**
+2. Paste the entire contents of [`backend/nextjs/schema.sql`](./backend/nextjs/schema.sql)
+3. Click **Run**
 
-### Why visual is deferred (not tested in the diagnostic)
+This creates all tables, indexes, seeds 3 demo students, and sets up the storage bucket for PDF uploads.
 
-We test **audio vs. text** only, and defer **visual** to the student's first real
-lessons. Reasoning:
+---
 
-- **Fairness** — audio and text render the *same script*, so the score gap is
-  attributable to modality, not content. A visual lesson is inherently different
-  content (a diagram), which confounds "is visual better for this student" with
-  "was this particular diagram good."
-- **Cost** — a fair, neutral visual diagnostic is the most expensive modality to
-  author for the least reliable signal.
-- **It self-corrects** — the preference signal updates after every real lesson,
-  so visual gets measured naturally. We record it as `null` ("untested") so the
-  adaptive engine knows to sample it, rather than as a misleading `0`.
+## Environment variables
 
-### Data model
+All backend environment variables go in `backend/nextjs/.env.local`. Copy from the example file:
 
-`preferred_format` lives on the **existing student/user record**. Each diagnostic
-run is a row in its own **`diagnostic_assessments`** table (1-to-many, so a
-student can be re-assessed):
-
-```
-students
-  preferred_format         'audio' | 'text' | 'visual'
-  preferred_format_source  'diagnostic' | 'accommodation' | 'teacher_override'
-  accommodations           [flagKey]
-
-diagnostic_assessments
-  id, student_id, created_at
-  status           'completed' | 'skipped_accommodation'
-  decided_by       'diagnostic' | 'accommodation'
-  assigned_format  'audio' | 'text' | 'visual'
-  scores           { audio:{correct,total,pct,seconds}, text:{...}, visual:null }
-  accommodation    { applied:[flagKey], mandatedFormat } | null
+```bash
+cp backend/nextjs/.env.local.example backend/nextjs/.env.local
 ```
 
-`scores` is exactly the baseline the adaptive engine's preference-signal tracker
-reads from later (`null` = untested). See `backend/README.md` for the API.
+| Variable | Required | Where to find it |
+|---|---|---|
+| `NEXT_PUBLIC_SUPABASE_URL` | Yes | Supabase → Settings → API → Project URL |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Yes | Supabase → Settings → API → Publishable key |
+| `SUPABASE_SERVICE_ROLE_KEY` | Yes | Supabase → Settings → API → Secret key |
+| `UPSTASH_REDIS_REST_URL` | Yes | Upstash → your DB → REST API tab |
+| `UPSTASH_REDIS_REST_TOKEN` | Yes | Upstash → your DB → REST API tab |
+| `OPENAI_API_KEY` | Yes | platform.openai.com — powers the AI tutor chatbot |
+| `ANTHROPIC_API_KEY` | Optional | console.anthropic.com — enables content generation |
+| `DEEPGRAM_API_KEY` | Optional | deepgram.com — enables audio narration + voice answers |
+
+> Features degrade gracefully without optional keys — the app still runs, those specific endpoints return a clear error.
+
+---
+
+## Project structure
+
+```
+CalAIHacks26/
+├── frontend/                  React + Vite app
+│   ├── src/
+│   │   ├── components/        Shared UI (Button, Card, TopBar, ChatBot…)
+│   │   ├── constants/
+│   │   │   ├── tokens.js      Design tokens — all colors and fonts
+│   │   │   └── data.js        Mock course/topic data
+│   │   ├── pages/
+│   │   │   ├── Landing.jsx    Role-select screen
+│   │   │   ├── student/       Student flow (Assessment, CourseDetail, Lesson, Quiz…)
+│   │   │   └── teacher/       Teacher flow (Catalog, Dashboard, StudentDetail…)
+│   │   └── lib/
+│   │       └── speech.js      TTS + STT helpers (calls /api/speech/*)
+│   ├── public/logo.png        App logo
+│   └── vite.config.js         Dev server + /api proxy to :3000
+│
+├── backend/
+│   └── nextjs/                Next.js API server
+│       ├── app/api/
+│       │   ├── health/        GET  — Supabase connection check
+│       │   ├── assessment/    Diagnostic lesson + grading + history
+│       │   ├── content/       Claude multimodal pipeline
+│       │   ├── speech/        Deepgram TTS + STT proxy
+│       │   ├── students/      Student CRUD + format override
+│       │   ├── quiz-attempts/ Save quiz results
+│       │   ├── dashboard/     Teacher analytics
+│       │   ├── upload/        PDF upload → Supabase Storage + embeddings
+│       │   └── chat/          GPT-4o mini AI tutor (streaming)
+│       ├── lib/
+│       │   ├── supabase.ts    DB clients + TypeScript types
+│       │   ├── redis.ts       Upstash Redis client + key helpers
+│       │   ├── anthropic.ts   Anthropic client
+│       │   ├── deepgram.ts    Deepgram TTS + STT
+│       │   ├── adaptive.ts    Diagnostic logic + lesson content (pure)
+│       │   └── multimodal.ts  Claude content pipeline
+│       ├── schema.sql         Run once in Supabase SQL Editor
+│       └── .env.local.example Copy → .env.local and fill in keys
+│
+└── Images/                    Logo source assets
+```
+
+---
+
+## Demo students (seeded by schema.sql)
+
+| Name | UUID prefix | Accommodation | Assigned format |
+|---|---|---|---|
+| Maya Chen | `11111111-…` | None → runs full diagnostic | visual |
+| Liam Patel | `22222222-…` | `audio_narration_required` → skips diagnostic | audio |
+| Sofia Reyes | `33333333-…` | `captions_required` (constraint only) → runs diagnostic | text |
+
+---
+
+## Sharing with teammates
+
+The fastest way to onboard a teammate:
+
+1. Share your `backend/nextjs/.env.local` file directly — they can point to the same Supabase + Redis project without creating their own accounts
+2. They run `npm install` in both `frontend/` and `backend/nextjs/`
+3. They do **not** need to re-run `schema.sql` if the database is already set up

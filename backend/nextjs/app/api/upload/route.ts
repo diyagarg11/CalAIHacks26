@@ -58,15 +58,19 @@ export async function POST(req: NextRequest) {
           .select("id")
           .single();
 
-        if (docErr && (docInsert.course_id || docInsert.uploaded_by)) {
-          const { data: retry, error: retryErr } = await supabaseAdmin
-            .from("documents")
-            .insert({ title, file_url: publicUrl })
-            .select("id")
-            .single();
-          if (retryErr) throw new Error(`Document insert failed: ${retryErr.message}`);
-          docRow = retry;
-          docErr = null;
+        // Retry with progressively fewer fields if the insert fails due to
+        // unknown columns (schema not yet migrated) or FK violations.
+        if (docErr) {
+          const fallbacks = [
+            { title, file_url: publicUrl, course_id: validCourseId || undefined },
+            { title, file_url: publicUrl },
+          ];
+          for (const fallback of fallbacks) {
+            const { data: r, error: e } = await supabaseAdmin
+              .from("documents").insert(fallback).select("id").single();
+            if (!e && r) { docRow = r; docErr = null; break; }
+            docErr = e;
+          }
         }
         if (docErr || !docRow) throw new Error(`Document insert failed: ${docErr?.message}`);
 
