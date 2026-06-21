@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { C, FONT } from "./constants/tokens";
 import { TEACHER_COURSES } from "./constants/data";
 import { ACCOMMODATION_RULES } from "./constants/diagnostic";
@@ -26,7 +26,8 @@ export default function App() {
 
   // Derive the active role: prefer the one from the auth session, fall back to pending
   const role = authRole ?? pendingRole;
-  const [sView, setSView] = useState("assessment");
+  const [sView, setSView] = useState(null); // null = waiting for diagnostic check
+  const [diagChecked, setDiagChecked] = useState(false);
   const [prefs, setPrefs] = useState({ visual: 8, audio: 5, text: 6 });
   const [course, setCourse] = useState(null);
   const [activeTopic, setActiveTopic] = useState(null);
@@ -46,7 +47,44 @@ export default function App() {
     if (user?.id && String(user.id) === String(studentId)) setAccommodationFlags(flags);
   };
 
-  const logout = () => { signOut(); setPendingRole(null); setSView("assessment"); setTView("catalog"); };
+  const logout = () => {
+    signOut();
+    setPendingRole(null);
+    setSView(null);
+    setDiagChecked(false);
+    setTView("catalog");
+  };
+
+  // On student login: check DB for a saved diagnostic result.
+  // If found, load saved prefs and jump to home. If not, show the diagnostic test.
+  useEffect(() => {
+    if (!user || role !== "student") {
+      setDiagChecked(false);
+      setSView(null);
+      return;
+    }
+    fetch(`/api/diagnostic/result?userId=${encodeURIComponent(user.id)}`)
+      .then((r) => r.json())
+      .then(({ result }) => {
+        if (result) {
+          const next = { visual: 5, audio: 5, text: 5 };
+          if (result.scores) {
+            for (const f of ["visual", "audio", "text"]) {
+              const pct = result.scores[f]?.pct;
+              if (typeof pct === "number") next[f] = Math.max(1, Math.round(pct / 10));
+            }
+          }
+          next[result.assigned_format] = 10;
+          setPrefs(next);
+          setMode(result.assigned_format);
+          setSView("home");
+        } else {
+          setSView("assessment");
+        }
+      })
+      .catch(() => setSView("assessment")) // network error → show diagnostic
+      .finally(() => setDiagChecked(true));
+  }, [user?.id, role]);
 
   // Weighted random mode selection — draws proportionally from prefs weights,
   // avoids repeating the same mode back-to-back if alternatives exist.
@@ -97,6 +135,15 @@ export default function App() {
     setPrefs(next);
     setMode(assignedFormat);
     setSView("home");
+
+    // Persist result so the diagnostic is skipped on next login
+    if (user?.id) {
+      fetch("/api/diagnostic/result", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: user.id, assignedFormat, scores: scores ?? null }),
+      }).catch(console.error);
+    }
   };
 
   let body;
@@ -110,6 +157,9 @@ export default function App() {
   } else if (!user) {
     // Role chosen but not logged in — show the auth page
     body = <Auth role={role} onBack={() => setPendingRole(null)} />;
+  } else if (role === "student" && !diagChecked) {
+    // Checking DB for existing diagnostic — show blank to avoid flicker
+    body = <div style={{ minHeight: "100vh", background: C.paper }} />;
   } else if (role === "student") {
     const openCourse = (c) => { setCourse(c); setSView("courseDetail"); };
     const openTopic = (t) => { setActiveTopic(t); setMode(pickMode(prefs, mode)); setSView("quiz"); };
