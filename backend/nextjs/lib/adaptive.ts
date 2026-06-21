@@ -147,6 +147,27 @@ const STOP = new Set("the a an of to in is are it its and or for that this with 
 const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9\s]/g, " ").replace(/\s+/g, " ").trim();
 const toks = (s: string) => norm(s).split(" ").filter((w) => w && !STOP.has(w));
 
+// Best-match scoring: finds which option the transcript most clearly describes.
+// Requires the correct option to win by a clear margin (0.15) over the second-best,
+// AND clear a minimum threshold (0.3) — prevents "said everything" from counting.
+function overlapScore(transcript: string, option: string): number {
+  const heard = new Set(toks(transcript));
+  const optToks = toks(option);
+  if (!optToks.length) return 0;
+  return optToks.filter((w) => heard.has(w)).length / optToks.length;
+}
+
+function spokenCorrect(transcript: string | null, options: readonly string[], correctIdx: number): boolean {
+  if (!transcript) return false;
+  const scores = options.map((opt) => overlapScore(transcript, opt));
+  const best = Math.max(...scores);
+  if (best < 0.3) return false;
+  const bestIdx = scores.indexOf(best);
+  if (bestIdx !== correctIdx) return false;
+  const secondBest = scores.filter((_, i) => i !== bestIdx).reduce((a, b) => Math.max(a, b), 0);
+  return best - secondBest >= 0.15;
+}
+
 export function gradeQuizMixed(format: DiagnosticFormat, answers: (number | string)[]): { correct: number; total: number } {
   const key = DIAGNOSTIC_LESSON.formats[format].quiz as readonly { correct: number; options: readonly string[] }[];
   let correct = 0;
@@ -154,9 +175,7 @@ export function gradeQuizMixed(format: DiagnosticFormat, answers: (number | stri
     const ans = answers[i];
     if (typeof ans === "number") { if (ans === item.correct) correct++; }
     else if (typeof ans === "string") {
-      const heard = new Set(toks(ans));
-      const ct = toks(item.options[item.correct]);
-      if (ct.length && ct.filter((w) => heard.has(w)).length / ct.length >= 0.25) correct++;
+      if (spokenCorrect(ans, item.options, item.correct)) correct++;
     }
   });
   return { correct, total: key.length };
@@ -173,9 +192,7 @@ export function buildBreakdown(format: DiagnosticFormat, answers: (number | stri
       wasCorrect = ans === item.correct;
     } else {
       userAnswer = typeof ans === "string" ? ans : "";
-      const heard = new Set(toks(userAnswer));
-      const ct = toks(correctAnswer);
-      wasCorrect = ct.length > 0 && ct.filter((w) => heard.has(w)).length / ct.length >= 0.25;
+      wasCorrect = spokenCorrect(userAnswer, item.options, item.correct);
     }
     return { q: item.q, userAnswer, correctAnswer, wasCorrect };
   });

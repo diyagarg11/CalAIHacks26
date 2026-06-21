@@ -341,8 +341,29 @@ export function Assessment({ studentId = 1, accommodationFlags = [], onDone }) {
         <Card style={{ padding: 26 }}>
           <div style={{ fontFamily: DISPLAY, fontWeight: 700, fontSize: 20, color: C.ink, marginBottom: 18 }}>{q.q}</div>
           {isAudio ? (
-            // Audio quiz: voice-only, no options shown
-            <VoiceAnswer key={qi} captured={typeof picked === "string" ? picked : null} onCapture={captureAudio} />
+            // Audio quiz: voice answer OR MCQ selection
+            <div>
+              <VoiceAnswer key={qi} captured={typeof picked === "string" ? picked : null} onCapture={captureAudio} />
+              <div style={{ display: "flex", alignItems: "center", gap: 12, margin: "16px 0 12px" }}>
+                <div style={{ flex: 1, height: 1, background: C.line }} />
+                <span style={{ fontFamily: MONO, fontSize: 11, color: C.faint }}>OR SELECT AN OPTION</span>
+                <div style={{ flex: 1, height: 1, background: C.line }} />
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                {q.options.map((opt, idx) => {
+                  const on = picked === idx;
+                  return (
+                    <button key={idx} onClick={() => choose(idx)}
+                      style={{ textAlign: "left", padding: "14px 16px", borderRadius: 12, fontFamily: FONT, fontSize: 15,
+                        fontWeight: 600, cursor: "pointer", transition: "all .12s",
+                        background: on ? m.color : C.surface, color: on ? "#fff" : C.ink,
+                        border: `1.5px solid ${on ? m.color : C.line}` }}>
+                      {opt}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
           ) : (
             // Text quiz: standard MCQ
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -362,7 +383,7 @@ export function Assessment({ studentId = 1, accommodationFlags = [], onDone }) {
           )}
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 20 }}>
             <span style={{ fontFamily: FONT, fontSize: 13, color: C.faint }}>
-              {isAudio ? "Speak your answer, then press Next." : "No feedback yet — we score both formats at the end."}
+              {isAudio ? "Speak your answer or select an option, then press Next." : "No feedback yet — we score both formats at the end."}
             </span>
             <Button onClick={nextQuestion} disabled={!answered} color={m.color}
               style={{ opacity: answered ? 1 : 0.45 }}>
@@ -439,7 +460,7 @@ export function Assessment({ studentId = 1, accommodationFlags = [], onDone }) {
                         </div>
                         <div style={{ fontFamily: FONT, fontSize: 12, color: item.wasCorrect ? "#16a34a" : C.sub, lineHeight: 1.5 }}>
                           {f === "audio"
-                            ? <><span style={{ color: C.faint }}>You said: </span>&ldquo;{item.userAnswer || "nothing recorded"}&rdquo;</>
+                            ? <><span style={{ color: C.faint }}>Your answer: </span>&ldquo;{item.userAnswer || "nothing recorded"}&rdquo;</>
                             : <><span style={{ color: C.faint }}>You chose: </span>&ldquo;{item.userAnswer || "no answer"}&rdquo;</>}
                         </div>
                         {!item.wasCorrect && (
