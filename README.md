@@ -3,30 +3,27 @@
 Adaptive learning that teaches each student in the format they actually learn
 best (text / audio / visual), measured rather than self-reported.
 
-This repo currently implements two tracks:
+This repo has two parts:
 
-- **Frontend** (`frontend/`) — React + Vite prototype of the student & teacher app.
-- **Backend** (`backend/`) — Node/Express API for the **initial assessment**
-  (the measured diagnostic that sets a new student's starting format) and the
-  **multimodal content pipeline** (one teacher source → text / audio / visual / quiz,
-  powered by Claude).
+- **`frontend/`** — React + Vite student & teacher app (port 5175)
+- **`backend/nextjs/`** — Next.js API server: assessment, content pipeline, speech, Supabase + Redis (port 3000)
 
 ## Run it locally
 
-Two processes. The frontend works on its own; the backend adds persistence and
-the Claude-powered content pipeline.
+Two terminals.
 
 ### 1. Backend
 
+Requires a free [Supabase](https://supabase.com) and [Upstash Redis](https://console.upstash.com) account. See [`backend/nextjs/README.md`](./backend/nextjs/README.md) for full setup.
+
 ```bash
-cd backend
+cd backend/nextjs
 npm install
-cp .env.example .env        # optional: add ANTHROPIC_API_KEY for the content pipeline
-npm run dev                 # http://localhost:8787
+cp .env.local.example .env.local   # fill in Supabase + Redis keys
+npm run dev                         # http://localhost:3000
 ```
 
-The diagnostic assessment runs **without** an API key. Only
-`POST /api/content/generate` (the multimodal pipeline) needs `ANTHROPIC_API_KEY`.
+Verify: `http://localhost:3000/api/health` → `{"status":"ok","supabase":"connected"}`
 
 ### 2. Frontend
 
@@ -36,9 +33,7 @@ npm install
 npm run dev                 # http://localhost:5173
 ```
 
-The frontend auto-detects the backend at `http://localhost:8787`. If the backend
-isn't running, the diagnostic falls back to bundled, client-side scoring so the
-demo still works (it'll show an "offline mode" note on the result screen).
+The frontend proxies all `/api` calls to the backend on :3000 automatically.
 
 ---
 
