@@ -1,24 +1,41 @@
 import { BookOpen, Headphones, Eye } from "lucide-react";
 
+// Palette taken directly from the Cal Hacks logo:
+//   top circle    → warm peach  #F5A87A
+//   bottom-left   → powder blue #90D2E6
+//   bottom-right  → pale yellow #EEEA9C
+//   center overlap→ soft teal   #8CCFB8
+//
+// "Soft" tokens = literal logo colors (used for backgrounds & tints).
+// "Base" tokens = same hue, deepened enough to read on white (buttons, text).
+// Neutrals warmed to match the logo's friendly, warm overall feel.
 export const C = {
-  paper: "#FBFAF7",
+  paper: "#FFFDF5",        // warm cream — echoes logo warmth
   surface: "#FFFFFF",
-  ink: "#1A1B2E",
-  sub: "#5B5C72",
-  faint: "#8A8B9C",
-  line: "#E9E5DD",
-  brand: "#5546D6",
-  brandSoft: "#EEEBFB",
-  text: "#5546D6",
-  textSoft: "#EEEBFB",
-  audio: "#E8852B",
-  audioSoft: "#FCEEDD",
-  visual: "#16A89B",
-  visualSoft: "#DFF3F1",
-  good: "#16A89B",
-  warn: "#E8852B",
-  bad: "#E0506A",
-  badSoft: "#FBE6EA",
+  ink: "#2A1E14",          // warm near-black (not cold blue-black)
+  sub: "#6B6050",          // warm mid-gray
+  faint: "#A09488",        // warm light gray
+  line: "#EAE3D5",         // warm border
+
+  // ── Peach (logo top circle ~#F5A87A) ──────────────────────
+  brand: "#D96840",        // readable deep peach for buttons/links
+  brandSoft: "#F5A87A",    // = actual logo peach circle
+
+  text: "#D96840",
+  textSoft: "#F5A87A",
+
+  // ── Sky blue (logo bottom-left ~#90D2E6) ──────────────────
+  audio: "#3898B8",        // readable deep sky blue
+  audioSoft: "#90D2E6",    // = actual logo blue circle
+
+  // ── Yellow → teal (logo bottom-right #EEEA9C, overlap #8CCFB8) ──
+  visual: "#4AADA0",       // teal (overlap) — yellow isn't readable on white
+  visualSoft: "#EEEA9C",   // = actual logo yellow circle as background tint
+
+  good: "#4AADA0",         // teal = success
+  warn: "#C89818",         // amber
+  bad: "#CC4460",          // error red
+  badSoft: "#FAE8EC",
 };
 
 export const FONT = "'Inter', ui-sans-serif, system-ui, sans-serif";

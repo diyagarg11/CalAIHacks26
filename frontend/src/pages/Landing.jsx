@@ -7,11 +7,11 @@ export function Landing({ onPick }) {
   return (
     <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column",
       alignItems: "center", justifyContent: "center", padding: 24 }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 28 }}>
-        <TriMark s={44} />
-        <div>
-          <div style={{ fontFamily: DISPLAY, fontWeight: 800, fontSize: 24, color: C.ink, lineHeight: 1 }}>Triad</div>
-          <div style={{ fontFamily: MONO, fontSize: 11, color: C.faint, letterSpacing: 1 }}>LEARN YOUR WAY</div>
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6, marginBottom: 28 }}>
+        <TriMark s={120} />
+        <div style={{ textAlign: "center" }}>
+          <div style={{ fontFamily: DISPLAY, fontWeight: 800, fontSize: 26, color: C.ink, lineHeight: 1 }}>Triad</div>
+          <div style={{ fontFamily: MONO, fontSize: 11, color: C.faint, letterSpacing: 1.5, marginTop: 3 }}>LEARN YOUR WAY</div>
         </div>
       </div>
 
