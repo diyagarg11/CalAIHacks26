@@ -20,6 +20,6 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ skip: true, reason: "accommodation", mandatedFormat: accommodation.mandatedFormat, accommodation });
   }
 
-  const order = Math.random() < 0.5 ? ["text", "audio"] : ["audio", "text"];
+  const order = (["text", "audio", "visual"] as const).slice().sort(() => Math.random() - 0.5);
   return NextResponse.json({ skip: false, order, accommodation, lesson: publicLesson() });
 }

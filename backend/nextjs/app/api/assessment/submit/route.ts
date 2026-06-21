@@ -15,7 +15,7 @@ export async function POST(req: NextRequest) {
   const scores: Record<string, any> = {};
 
   if (!accommodation.mandatedFormat) {
-    for (const format of ["text", "audio"] as DiagnosticFormat[]) {
+    for (const format of ["text", "audio", "visual"] as DiagnosticFormat[]) {
       const r = results[format];
       if (!r) return NextResponse.json({ error: `missing results for ${format}` }, { status: 400 });
       const graded = format === "audio"
@@ -41,7 +41,7 @@ export async function POST(req: NextRequest) {
   }).eq("id", student.id);
 
   const breakdown: Record<string, any> = {};
-  for (const format of ["text", "audio"] as DiagnosticFormat[]) {
+  for (const format of ["text", "audio", "visual"] as DiagnosticFormat[]) {
     if (results[format]) breakdown[format] = buildBreakdown(format, results[format].answers);
   }
 

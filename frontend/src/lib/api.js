@@ -10,7 +10,9 @@ import {
   decideFormat,
 } from "../constants/diagnostic.js";
 
-const BASE = import.meta.env.VITE_API_URL || "http://localhost:8787";
+// Empty string → requests go to the Vite dev server (:5173), which proxies
+// /api/* to the Next.js backend. Set VITE_API_URL in .env for production.
+const BASE = import.meta.env.VITE_API_URL || "";
 
 async function tryFetch(path, opts) {
   const res = await fetch(`${BASE}${path}`, {
@@ -31,7 +33,7 @@ export async function getDiagnostic(studentId, accommodationFlags = []) {
     const accommodation = resolveAccommodation(accommodationFlags);
     if (accommodation.mandatedFormat)
       return { online: false, skip: true, reason: "accommodation", mandatedFormat: accommodation.mandatedFormat, accommodation };
-    const order = Math.random() < 0.5 ? ["text", "audio"] : ["audio", "text"];
+    const order = ["text", "audio", "visual"].sort(() => Math.random() - 0.5);
     const formats = {};
     for (const [k, v] of Object.entries(DIAGNOSTIC_LESSON.formats)) {
       const { quiz, ...rest } = v;
@@ -72,7 +74,7 @@ export async function submitDiagnostic(studentId, results, accommodationFlags = 
     }
     const scores = {};
     const breakdown = {};
-    for (const f of ["text", "audio"]) {
+    for (const f of ["text", "audio", "visual"]) {
       const graded = f === "audio" ? gradeLocalMixed(f, results[f]?.answers || []) : gradeLocal(f, results[f]?.answers || []);
       scores[f] = { ...graded, seconds: results[f]?.seconds ?? null, pct: Math.round((graded.correct / graded.total) * 100) };
       breakdown[f] = buildBreakdownLocal(f, results[f]?.answers || []);
@@ -83,7 +85,7 @@ export async function submitDiagnostic(studentId, results, accommodationFlags = 
         status: "completed",
         decided_by: "diagnostic",
         assigned_format: decideFormat(scores),
-        scores: { ...scores, visual: null },
+        scores: { ...scores },
         breakdown,
         accommodation: accommodation.applied.length ? { applied: accommodation.applied, mandatedFormat: null } : null,
       },

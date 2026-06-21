@@ -85,10 +85,47 @@ export const DIAGNOSTIC_LESSON = {
         },
       ],
     },
+
+    visual: {
+      kind: "visual",
+      title: "Harvard University — By the Numbers",
+      highlights: [
+        { label: "Founded",          value: "1636",         note: "Oldest university in the United States" },
+        { label: "Location",         value: "Cambridge, MA", note: "Across the Charles River from Boston" },
+        { label: "Library",          value: "20M+ volumes", note: "Largest academic library in the world" },
+        { label: "Nobel Laureates",  value: "161+",         note: "More than any other university" },
+        { label: "Endowment",        value: "$50B+",        note: "Largest university endowment globally" },
+        { label: "School Color",     value: "Crimson",      note: "Teams are called the Harvard Crimson" },
+        { label: "Famous Alumni",    value: "Obama · JFK · Portman", note: "Multiple US presidents attended" },
+        { label: "Famous Dropouts",  value: "Gates · Zuckerberg",    note: "Left to found Microsoft and Facebook" },
+      ],
+      quiz: [
+        {
+          q: "According to the infographic, when was Harvard founded?",
+          options: ["1776", "1636", "1901", "1492"],
+          correct: 1,
+        },
+        {
+          q: "What does the chart show about Harvard's library?",
+          options: ["It has the newest books in the US", "It has over 20 million volumes — the largest academic library in the world", "It was founded before the university", "It only accepts Harvard students"],
+          correct: 1,
+        },
+        {
+          q: "Which famous figures are listed as Harvard dropouts in the infographic?",
+          options: ["Obama and JFK", "Bill Gates and Mark Zuckerberg", "Natalie Portman and Barack Obama", "Larry Page and Sergey Brin"],
+          correct: 1,
+        },
+        {
+          q: "According to the stat cards, how many Nobel laureates has Harvard produced?",
+          options: ["About 10", "Over 50", "161+", "None — they all went to Stanford"],
+          correct: 2,
+        },
+      ],
+    },
   },
 };
 
-export const DIAGNOSTIC_FORMATS = ["text", "audio"];
+export const DIAGNOSTIC_FORMATS = ["text", "audio", "visual"];
 
 export function resolveAccommodation(flags = []) {
   let mandatedFormat = null;
