@@ -4,16 +4,37 @@ import { COURSES } from "../../constants/data";
 import { Card } from "../../components/Card";
 import { ModeBadge } from "../../components/ModeBadge";
 
+const MODE_COLORS = { audio: C.audio, text: C.brand, visual: C.visual };
+const MODE_LABELS = { audio: "Audio", text: "Text", visual: "Visual" };
+
 export function StudentHome({ prefs, onOpen }) {
   const top = Object.entries(prefs).sort((a, b) => b[1] - a[1])[0][0];
+  const total = prefs.audio + prefs.text + prefs.visual;
   return (
     <div style={{ maxWidth: 980, margin: "0 auto", padding: "36px 22px" }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
-        <div>
+        <div style={{ flex: 1, minWidth: 260 }}>
           <h1 style={{ fontFamily: DISPLAY, fontWeight: 800, fontSize: 28, color: C.ink, margin: 0 }}>Welcome back, Maya</h1>
-          <p style={{ fontFamily: FONT, fontSize: 15, color: C.sub, margin: "6px 0 0" }}>
-            Your strongest mode right now is <ModeBadge mode={top} /> — lessons open there by default.
+          <p style={{ fontFamily: FONT, fontSize: 15, color: C.sub, margin: "6px 0 10px" }}>
+            Your strongest mode is <ModeBadge mode={top} /> — lessons are weighted toward it.
           </p>
+          <div style={{ maxWidth: 340 }}>
+            <div style={{ display: "flex", height: 8, borderRadius: 999, overflow: "hidden", gap: 2 }}>
+              {["audio", "text", "visual"].map((m) => (
+                <div key={m} style={{ width: `${(prefs[m] / total) * 100}%`, background: MODE_COLORS[m], borderRadius: 999, transition: "width .4s" }} />
+              ))}
+            </div>
+            <div style={{ display: "flex", gap: 14, marginTop: 6 }}>
+              {["audio", "text", "visual"].map((m) => (
+                <div key={m} style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                  <div style={{ width: 8, height: 8, borderRadius: "50%", background: MODE_COLORS[m] }} />
+                  <span style={{ fontFamily: MONO, fontSize: 11, color: C.faint }}>
+                    {MODE_LABELS[m]} {Math.round((prefs[m] / total) * 100)}%
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
         <Card style={{ padding: "14px 18px", display: "flex", gap: 22 }}>
           {[["Day streak", "6", C.audio, Flame], ["Mastery", "74%", C.visual, Award]].map(([l, v, c, I]) => (

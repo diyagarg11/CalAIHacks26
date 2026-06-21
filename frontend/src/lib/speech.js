@@ -3,7 +3,7 @@
 //  - transcribeBlob(blob): spoken answer -> transcript.
 //  - matchOptionFromSpeech(transcript, options): map a spoken answer to an MCQ index.
 
-const BASE = import.meta.env.VITE_API_URL || "http://localhost:8787";
+const BASE = import.meta.env.VITE_API_URL || "";
 
 // Returns an object URL for the narrated audio, or null if TTS is unavailable
 // (so the caller can fall back to the browser's speech synthesis).

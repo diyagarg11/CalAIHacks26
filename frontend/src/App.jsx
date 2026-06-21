@@ -30,6 +30,34 @@ export default function App() {
 
   const logout = () => { setRole(null); setSView("assessment"); setTView("catalog"); };
 
+  // Weighted random mode selection — draws proportionally from prefs weights,
+  // avoids repeating the same mode back-to-back if alternatives exist.
+  const pickMode = (currentPrefs, lastMode = null) => {
+    const entries = Object.entries(currentPrefs);
+    const eligible = entries.length > 1 && lastMode
+      ? entries.filter(([m]) => m !== lastMode)
+      : entries;
+    const total = eligible.reduce((s, [, w]) => s + w, 0);
+    let r = Math.random() * total;
+    for (const [m, w] of eligible) {
+      r -= w;
+      if (r <= 0) return m;
+    }
+    return eligible[eligible.length - 1][0];
+  };
+
+  // Nudge the weight for a given mode up or down based on quiz score.
+  const updatePrefsFromQuiz = (quizMode, attempts) => {
+    if (!attempts?.length) return;
+    const pct = (attempts.filter((a) => a.correct).length / attempts.length) * 100;
+    const delta = pct >= 70 ? 1 : pct < 40 ? -1 : 0;
+    if (delta === 0) return;
+    setPrefs((prev) => ({
+      ...prev,
+      [quizMode]: Math.max(1, Math.min(10, prev[quizMode] + delta)),
+    }));
+  };
+
   const finishAssessment = ({ assignedFormat, scores }) => {
     const next = { visual: 5, audio: 5, text: 5 };
     if (scores) {
@@ -47,9 +75,8 @@ export default function App() {
   let body;
   if (!role) body = <Landing onPick={(r) => { setRole(r); }} />;
   else if (role === "student") {
-    const topMode = Object.entries(prefs).sort((a, b) => b[1] - a[1])[0][0];
     const openCourse = (c) => { setCourse(c); setSView("courseDetail"); };
-    const openTopic = (t) => { setActiveTopic(t); setMode(topMode); setSView("lesson"); };
+    const openTopic = (t) => { setActiveTopic(t); setMode(pickMode(prefs, mode)); setSView("quiz"); };
     const topBarRight = sView !== "assessment" && (
       <Button variant="ghost" onClick={() => setSView("home")} style={{ color: C.brand }}>My courses</Button>
     );
@@ -61,9 +88,10 @@ export default function App() {
         {sView === "courseDetail" && <CourseDetail course={course} history={history} onSelectTopic={openTopic} onBack={() => setSView("home")} />}
         {sView === "lesson"       && <Lesson course={course} topic={activeTopic} mode={mode} setMode={setMode}
                                        onQuiz={() => setSView("quiz")} onBack={() => setSView("courseDetail")} />}
-        {sView === "quiz"         && <Quiz topic={activeTopic} mode={mode} onBack={() => setSView("lesson")}
+        {sView === "quiz"         && <Quiz topic={activeTopic} mode={mode} prefs={prefs} onBack={() => setSView("courseDetail")}
                                        onDone={(r) => {
                                          setHistory((prev) => ({ ...prev, [activeTopic.id]: [...(prev[activeTopic.id] || []), ...r.attempts] }));
+                                         updatePrefsFromQuiz(mode, r.attempts);
                                          setResult(r);
                                          setSView("result");
                                        }} />}
