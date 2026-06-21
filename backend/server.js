@@ -5,6 +5,7 @@ import { assessmentRouter } from "./routes/assessment.js";
 import { contentRouter } from "./routes/content.js";
 import { studentRouter } from "./routes/students.js";
 import { speechRouter } from "./routes/speech.js";
+import { uploadRouter } from "./routes/upload.js";
 import { hasKey } from "./lib/anthropic.js";
 import { hasDeepgram } from "./lib/deepgram.js";
 
@@ -19,6 +20,7 @@ app.use("/api/assessment", assessmentRouter);
 app.use("/api/content", contentRouter);
 app.use("/api/students", studentRouter);
 app.use("/api/speech", speechRouter);
+app.use("/api/upload", uploadRouter);
 
 const PORT = process.env.PORT || 8787;
 app.listen(PORT, () => {

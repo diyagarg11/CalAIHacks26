@@ -1,6 +1,7 @@
+import { useState } from "react";
 import {
   Upload, Target, CheckCircle2, Clock, Lightbulb, AlertTriangle,
-  ChevronRight, ChevronLeft, Sparkles, ArrowRight,
+  ChevronRight, ChevronLeft, Sparkles, ArrowRight, X, FileText, Loader,
 } from "lucide-react";
 import {
   ScatterChart, Scatter, BarChart, Bar, LineChart, Line, XAxis, YAxis,
@@ -20,9 +21,148 @@ const chartTip = {
   labelStyle: { color: C.ink, fontWeight: 600 },
 };
 
+const BASE = import.meta.env.VITE_API_URL || "http://localhost:8787";
+
+function fmt(bytes) {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function UploadModal({ onClose }) {
+  const [files, setFiles] = useState([]);
+  const [status, setStatus] = useState("idle"); // idle | uploading | done | error
+  const [uploaded, setUploaded] = useState([]);
+  const [errorMsg, setErrorMsg] = useState("");
+  const [drag, setDrag] = useState(false);
+
+  const addFiles = (incoming) => {
+    const pdfs = Array.from(incoming).filter((f) => f.type === "application/pdf");
+    if (!pdfs.length) { setErrorMsg("Only PDF files are accepted."); return; }
+    setErrorMsg("");
+    setFiles((prev) => {
+      const names = new Set(prev.map((f) => f.name));
+      return [...prev, ...pdfs.filter((f) => !names.has(f.name))];
+    });
+  };
+
+  const remove = (name) => setFiles((prev) => prev.filter((f) => f.name !== name));
+
+  const submit = async () => {
+    if (!files.length) { setErrorMsg("Add at least one PDF before uploading."); return; }
+    setStatus("uploading");
+    const body = new FormData();
+    files.forEach((f) => body.append("files", f));
+    try {
+      const res = await fetch(`${BASE}/api/upload`, { method: "POST", body });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Upload failed");
+      setUploaded(data.files);
+      setStatus("done");
+    } catch (e) {
+      setErrorMsg(e.message);
+      setStatus("error");
+    }
+  };
+
+  return (
+    <div onClick={onClose}
+      style={{ position: "fixed", inset: 0, background: "rgba(26,27,46,.45)", display: "flex",
+        alignItems: "center", justifyContent: "center", zIndex: 100, padding: 24 }}>
+      <div onClick={(e) => e.stopPropagation()}
+        style={{ background: C.surface, borderRadius: 20, padding: 32, width: "100%", maxWidth: 500,
+          boxShadow: "0 24px 60px rgba(26,27,46,.18)" }}>
+
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
+          <div style={{ fontFamily: DISPLAY, fontWeight: 800, fontSize: 20, color: C.ink }}>Upload materials</div>
+          <button onClick={onClose} style={{ border: "none", background: "transparent", cursor: "pointer", color: C.faint, display: "flex" }}>
+            <X size={20} />
+          </button>
+        </div>
+
+        {status === "done" ? (
+          <div>
+            <div style={{ fontFamily: FONT, fontSize: 15, color: C.ink, marginBottom: 14 }}>
+              {uploaded.length} file{uploaded.length !== 1 ? "s" : ""} uploaded successfully.
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {uploaded.map((f) => (
+                <div key={f.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 14px",
+                  background: C.paper, borderRadius: 10, border: `1px solid ${C.line}` }}>
+                  <FileText size={16} color={C.brand} />
+                  <span style={{ flex: 1, fontFamily: FONT, fontSize: 14, color: C.ink }}>{f.name}</span>
+                  <span style={{ fontFamily: MONO, fontSize: 11, color: C.faint }}>{fmt(f.size)}</span>
+                </div>
+              ))}
+            </div>
+            <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 20 }}>
+              <Button onClick={onClose}>Done</Button>
+            </div>
+          </div>
+        ) : (
+          <>
+            {/* Drop zone */}
+            <div
+              onDragOver={(e) => { e.preventDefault(); setDrag(true); }}
+              onDragLeave={() => setDrag(false)}
+              onDrop={(e) => { e.preventDefault(); setDrag(false); addFiles(e.dataTransfer.files); }}
+              onClick={() => document.getElementById("pdf-input").click()}
+              style={{ border: `2px dashed ${drag ? C.brand : C.line}`, borderRadius: 14, padding: "32px 20px",
+                textAlign: "center", cursor: "pointer", background: drag ? C.brandSoft : C.paper,
+                transition: "all .15s", marginBottom: 16 }}>
+              <Upload size={28} color={drag ? C.brand : C.faint} style={{ margin: "0 auto 10px" }} />
+              <div style={{ fontFamily: FONT, fontWeight: 600, fontSize: 15, color: C.ink }}>
+                Drop PDFs here or click to browse
+              </div>
+              <div style={{ fontFamily: FONT, fontSize: 13, color: C.faint, marginTop: 4 }}>
+                PDF only · up to 50 MB each · at least 1 required
+              </div>
+              <input id="pdf-input" type="file" accept="application/pdf" multiple hidden
+                onChange={(e) => addFiles(e.target.files)} />
+            </div>
+
+            {/* File list */}
+            {files.length > 0 && (
+              <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 16 }}>
+                {files.map((f) => (
+                  <div key={f.name} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 14px",
+                    background: C.paper, borderRadius: 10, border: `1px solid ${C.line}` }}>
+                    <FileText size={16} color={C.brand} />
+                    <span style={{ flex: 1, fontFamily: FONT, fontSize: 14, color: C.ink }}>{f.name}</span>
+                    <span style={{ fontFamily: MONO, fontSize: 11, color: C.faint, marginRight: 6 }}>{fmt(f.size)}</span>
+                    <button onClick={() => remove(f.name)}
+                      style={{ border: "none", background: "transparent", cursor: "pointer", color: C.faint, display: "flex" }}>
+                      <X size={14} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {errorMsg && (
+              <p style={{ fontFamily: FONT, fontSize: 13, color: C.bad, margin: "0 0 12px" }}>{errorMsg}</p>
+            )}
+
+            <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+              <Button variant="soft" onClick={onClose}>Cancel</Button>
+              <Button onClick={submit} disabled={status === "uploading"}
+                style={{ opacity: status === "uploading" ? 0.6 : 1 }}>
+                {status === "uploading"
+                  ? <><Loader size={15} className="spin" /> Uploading…</>
+                  : <><Upload size={15} /> Upload {files.length > 0 ? `${files.length} file${files.length > 1 ? "s" : ""}` : "files"}</>}
+              </Button>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export function TeacherDashboard({ course, onBack, onStudent }) {
   const { kpis, topics, chatbot, accuracyOverTime, reteach } = course;
   const flagged = STUDENTS.filter((s) => s.status === "needs-support");
+  const [showUpload, setShowUpload] = useState(false);
 
   return (
     <div style={{ maxWidth: 1140, margin: "0 auto", padding: "30px 22px" }}>
@@ -44,7 +184,7 @@ export function TeacherDashboard({ course, onBack, onStudent }) {
             <h1 style={{ fontFamily: DISPLAY, fontWeight: 800, fontSize: 28, color: C.ink, margin: "4px 0 0" }}>Class dashboard</h1>
           </div>
         </div>
-        <Button variant="soft"><Upload size={16} /> Upload materials</Button>
+        <Button variant="soft" onClick={() => setShowUpload(true)}><Upload size={16} /> Upload materials</Button>
       </div>
 
       {/* No data state */}
@@ -57,7 +197,7 @@ export function TeacherDashboard({ course, onBack, onStudent }) {
           <p style={{ fontFamily: FONT, fontSize: 14, color: C.sub, maxWidth: 360, margin: "0 auto 22px" }}>
             Upload course materials and invite students to start seeing metrics here.
           </p>
-          <Button><Upload size={15} /> Upload materials</Button>
+          <Button onClick={() => setShowUpload(true)}><Upload size={15} /> Upload materials</Button>
         </Card>
       ) : (
         <>
@@ -174,6 +314,8 @@ export function TeacherDashboard({ course, onBack, onStudent }) {
           <StudentTable onStudent={onStudent} />
         </>
       )}
+
+      {showUpload && <UploadModal onClose={() => setShowUpload(false)} />}
     </div>
   );
 }
