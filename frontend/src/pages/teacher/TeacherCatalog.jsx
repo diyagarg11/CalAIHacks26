@@ -1,22 +1,40 @@
 import { useState } from "react";
-import { Search, Plus, Users, ChevronRight, X } from "lucide-react";
+import { Search, Plus, Users, ChevronRight, X, Loader } from "lucide-react";
 import { C, DISPLAY, FONT, MONO } from "../../constants/tokens";
 import { Card } from "../../components/Card";
 import { Button } from "../../components/Button";
 import { Eyebrow } from "../../components/Eyebrow";
+import { useAuth } from "../../auth/AuthProvider";
 
 const PALETTE = [C.visual, C.brand, C.audio, C.bad];
 const EMOJIS = ["📚", "🔬", "🌍", "💡", "🎨", "⚗️", "📊", "🧮"];
 
 function CreateCourseModal({ onClose, onCreate }) {
+  const { user } = useAuth();
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState("");
 
-  const submit = (e) => {
+  const submit = async (e) => {
     e.preventDefault();
-    if (!title.trim()) return;
-    onCreate({ title: title.trim(), description: description.trim() });
-    onClose();
+    if (!title.trim() || saving) return;
+    setSaving(true);
+    setErr("");
+    try {
+      const res = await fetch("/api/courses", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: title.trim(), teacherId: user?.id }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to create course");
+      onCreate({ title: data.course.title, description: description.trim(), id: data.course.id });
+      onClose();
+    } catch (e) {
+      setErr(e.message);
+      setSaving(false);
+    }
   };
 
   return (
@@ -83,9 +101,12 @@ function CreateCourseModal({ onClose, onCreate }) {
             />
           </div>
 
+          {err && <p style={{ fontFamily: FONT, fontSize: 13, color: C.bad, margin: 0 }}>{err}</p>}
           <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 4 }}>
             <Button variant="soft" type="button" onClick={onClose}>Cancel</Button>
-            <Button type="submit" style={{ opacity: title.trim() ? 1 : 0.5 }}>Create course</Button>
+            <Button type="submit" disabled={saving} style={{ opacity: title.trim() && !saving ? 1 : 0.5 }}>
+              {saving ? <><Loader size={14} className="spin" /> Creating…</> : "Create course"}
+            </Button>
           </div>
         </form>
       </div>
@@ -229,7 +250,6 @@ export function TeacherCatalog({ courses, onSelect, onCreateCourse }) {
           onCreate={(fields) => {
             const idx = courses.length;
             onCreateCourse({
-              id: `course-${Date.now()}`,
               emoji: EMOJIS[idx % EMOJIS.length],
               color: PALETTE[idx % PALETTE.length],
               students: 0,
@@ -240,6 +260,7 @@ export function TeacherCatalog({ courses, onSelect, onCreateCourse }) {
               accuracyOverTime: [],
               reteach: [],
               ...fields,
+              // id comes from fields (Supabase UUID returned by the API)
             });
           }}
         />

@@ -55,6 +55,29 @@ export default function App() {
     setTView("catalog");
   };
 
+  // On teacher login: fetch real Supabase courses and merge with mock courses
+  useEffect(() => {
+    if (!user || role !== "teacher") return;
+    fetch(`/api/courses?teacherId=${encodeURIComponent(user.id)}`)
+      .then((r) => r.json())
+      .then(({ courses }) => {
+        if (!courses?.length) return;
+        setTeacherCourses((prev) => {
+          const existingIds = new Set(prev.map((c) => c.id));
+          const palette = [C.visual, C.brand, C.audio, C.bad];
+          const newOnes = courses
+            .filter((c) => !existingIds.has(c.id))
+            .map((c, i) => ({
+              id: c.id, title: c.title, emoji: "📚", period: null,
+              students: 0, color: palette[i % palette.length],
+              kpis: null, topics: [], chatbot: [], accuracyOverTime: [], reteach: [],
+            }));
+          return [...prev, ...newOnes];
+        });
+      })
+      .catch(() => {}); // non-fatal — mock courses still show
+  }, [user?.id, role]);
+
   // On student login: check DB for a saved diagnostic result.
   // If found, load saved prefs and jump to home. If not, show the diagnostic test.
   useEffect(() => {
