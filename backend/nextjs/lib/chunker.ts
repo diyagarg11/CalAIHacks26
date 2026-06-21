@@ -66,7 +66,7 @@ export function chunkText(text: string): Chunk[] {
   return chunks.map((content, index) => {
     const charStart = Math.max(0, text.indexOf(content.slice(0, 40).trim(), pos));
     const charEnd = charStart + content.length;
-    pos = charStart;
+    pos = charEnd;
     return { content, index, charStart, charEnd };
   });
 }
