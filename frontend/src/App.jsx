@@ -24,6 +24,22 @@ export default function App() {
 
   const logout = () => { setRole(null); setSView("assessment"); setTView("dashboard"); };
 
+  // The diagnostic assigns a measured starting format. Reflect it into `prefs`
+  // so StudentHome opens in that mode (it picks the highest-scoring key).
+  const finishAssessment = ({ assignedFormat, scores }) => {
+    const next = { visual: 5, audio: 5, text: 5 };
+    if (scores) {
+      for (const f of ["visual", "audio", "text"]) {
+        const pct = scores[f]?.pct;
+        if (typeof pct === "number") next[f] = Math.max(1, Math.round(pct / 10));
+      }
+    }
+    next[assignedFormat] = 10; // assigned format becomes the starting mode
+    setPrefs(next);
+    setMode(assignedFormat);
+    setSView("home");
+  };
+
   let body;
   if (!role) body = <Landing onPick={(r) => { setRole(r); }} />;
   else if (role === "student") {
@@ -32,7 +48,7 @@ export default function App() {
       <>
         <TopBar role="student" onLogout={logout}
           right={sView !== "assessment" && <Button variant="ghost" onClick={() => setSView("home")} style={{ color: C.brand }}>My courses</Button>} />
-        {sView === "assessment" && <Assessment prefs={prefs} setPrefs={setPrefs} onDone={() => setSView("home")} />}
+        {sView === "assessment" && <Assessment studentId={1} accommodationFlags={[]} onDone={finishAssessment} />}
         {sView === "home" && <StudentHome prefs={prefs} onOpen={start} />}
         {sView === "lesson" && <Lesson course={course} mode={mode} setMode={setMode}
           onQuiz={() => setSView("quiz")} onBack={() => setSView("home")} />}
@@ -59,6 +75,8 @@ export default function App() {
         * { box-sizing: border-box; }
         button:focus-visible, input:focus-visible, [tabindex]:focus-visible { outline: 2px solid ${C.brand}; outline-offset: 2px; }
         input[type=range] { height: 6px; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .spin { animation: spin 0.9s linear infinite; }
         @media (max-width: 720px) {
           [style*="grid-template-columns: 1.3fr"], [style*="grid-template-columns: 1fr 1fr"] { grid-template-columns: 1fr !important; }
         }
