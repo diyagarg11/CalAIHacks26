@@ -128,3 +128,93 @@ create policy "Teachers can upload materials"
 create policy "Authenticated users can read materials"
   on storage.objects for select
   using (bucket_id = 'class-materials');
+
+-- ============================================================
+-- Courses and course-document associations
+-- ============================================================
+
+create table public.courses (
+  id          uuid primary key default gen_random_uuid(),
+  teacher_id  uuid not null references public.users(id) on delete cascade,
+  title       text not null,
+  created_at  timestamptz not null default now()
+);
+
+-- Many-to-many: a course has many documents; a document can belong to many courses
+create table public.course_documents (
+  course_id    uuid not null references public.courses(id) on delete cascade,
+  document_id  uuid not null references public.documents(id) on delete cascade,
+  added_at     timestamptz not null default now(),
+  primary key (course_id, document_id)
+);
+
+create index on public.courses (teacher_id);
+create index on public.course_documents (course_id);
+create index on public.course_documents (document_id);
+
+-- ============================================================
+-- Vector embeddings (document chunking + semantic search)
+-- Requires the pgvector extension — enable it first:
+--   Dashboard → Database → Extensions → vector
+-- ============================================================
+
+create extension if not exists vector;
+
+-- One row per text chunk extracted from a document
+create table public.document_chunks (
+  id           uuid primary key default gen_random_uuid(),
+  document_id  uuid references public.documents(id) on delete cascade,
+  title        text,
+  content      text not null,
+  chunk_index  integer not null,
+  char_start   integer,
+  char_end     integer,
+  -- OpenAI text-embedding-3-small produces 1536-dimensional vectors
+  embedding    vector(1536),
+  created_at   timestamptz not null default now()
+);
+
+-- IVFFlat index for approximate nearest-neighbour cosine search.
+-- Tune `lists` to sqrt(num_rows); 100 is a good default up to ~1M chunks.
+create index on public.document_chunks
+  using ivfflat (embedding vector_cosine_ops)
+  with (lists = 100);
+
+create index on public.document_chunks (document_id);
+create index on public.document_chunks (chunk_index);
+
+-- ── Similarity search helper ────────────────────────────────
+-- Called by POST /api/documents/search via supabase.rpc(...)
+create or replace function match_document_chunks(
+  query_embedding  vector(1536),
+  match_document_id uuid,          -- pass NULL to search across all documents
+  match_count      int default 5
+)
+returns table (
+  id           uuid,
+  document_id  uuid,
+  title        text,
+  content      text,
+  chunk_index  integer,
+  char_start   integer,
+  char_end     integer,
+  similarity   float
+)
+language sql stable
+as $$
+  select
+    dc.id,
+    dc.document_id,
+    dc.title,
+    dc.content,
+    dc.chunk_index,
+    dc.char_start,
+    dc.char_end,
+    1 - (dc.embedding <=> query_embedding) as similarity
+  from public.document_chunks dc
+  where
+    match_document_id is null
+    or dc.document_id = match_document_id
+  order by dc.embedding <=> query_embedding
+  limit match_count;
+$$;
