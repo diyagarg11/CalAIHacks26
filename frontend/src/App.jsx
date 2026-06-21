@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { C, FONT } from "./constants/tokens";
-import { COURSES, TEACHER_COURSES } from "./constants/data";
+import { TEACHER_COURSES } from "./constants/data";
 import { TopBar } from "./components/TopBar";
 import { Button } from "./components/Button";
 import { Landing } from "./pages/Landing";
@@ -9,6 +9,7 @@ import { StudentHome } from "./pages/student/StudentHome";
 import { Lesson } from "./pages/student/Lesson";
 import { Quiz } from "./pages/student/Quiz";
 import { QuizResult } from "./pages/student/QuizResult";
+import { CourseDetail } from "./pages/student/CourseDetail";
 import { TeacherCatalog } from "./pages/teacher/TeacherCatalog";
 import { TeacherDashboard } from "./pages/teacher/TeacherDashboard";
 import { StudentDetail } from "./pages/teacher/StudentDetail";
@@ -17,9 +18,11 @@ export default function App() {
   const [role, setRole] = useState(null);
   const [sView, setSView] = useState("assessment");
   const [prefs, setPrefs] = useState({ visual: 8, audio: 5, text: 6 });
-  const [course, setCourse] = useState(COURSES[0]);
+  const [course, setCourse] = useState(null);
+  const [activeTopic, setActiveTopic] = useState(null);
   const [mode, setMode] = useState("visual");
   const [result, setResult] = useState(null);
+  const [history, setHistory] = useState({});
   const [tView, setTView] = useState("catalog");
   const [teacherCourses, setTeacherCourses] = useState(TEACHER_COURSES);
   const [activeCourse, setActiveCourse] = useState(null);
@@ -27,8 +30,6 @@ export default function App() {
 
   const logout = () => { setRole(null); setSView("assessment"); setTView("catalog"); };
 
-  // The diagnostic assigns a measured starting format. Reflect it into `prefs`
-  // so StudentHome opens in that mode (it picks the highest-scoring key).
   const finishAssessment = ({ assignedFormat, scores }) => {
     const next = { visual: 5, audio: 5, text: 5 };
     if (scores) {
@@ -37,7 +38,7 @@ export default function App() {
         if (typeof pct === "number") next[f] = Math.max(1, Math.round(pct / 10));
       }
     }
-    next[assignedFormat] = 10; // assigned format becomes the starting mode
+    next[assignedFormat] = 10;
     setPrefs(next);
     setMode(assignedFormat);
     setSView("home");
@@ -46,18 +47,27 @@ export default function App() {
   let body;
   if (!role) body = <Landing onPick={(r) => { setRole(r); }} />;
   else if (role === "student") {
-    const start = (c) => { setCourse(c); setMode(c.mode); setSView("lesson"); };
+    const topMode = Object.entries(prefs).sort((a, b) => b[1] - a[1])[0][0];
+    const openCourse = (c) => { setCourse(c); setSView("courseDetail"); };
+    const openTopic = (t) => { setActiveTopic(t); setMode(topMode); setSView("lesson"); };
+    const topBarRight = sView !== "assessment" && (
+      <Button variant="ghost" onClick={() => setSView("home")} style={{ color: C.brand }}>My courses</Button>
+    );
     body = (
       <>
-        <TopBar role="student" onLogout={logout}
-          right={sView !== "assessment" && <Button variant="ghost" onClick={() => setSView("home")} style={{ color: C.brand }}>My courses</Button>} />
-        {sView === "assessment" && <Assessment studentId={1} accommodationFlags={[]} onDone={finishAssessment} />}
-        {sView === "home" && <StudentHome prefs={prefs} onOpen={start} />}
-        {sView === "lesson" && <Lesson course={course} mode={mode} setMode={setMode}
-          onQuiz={() => setSView("quiz")} onBack={() => setSView("home")} />}
-        {sView === "quiz" && <Quiz onBack={() => setSView("lesson")}
-          onDone={(r) => { setResult(r); setSView("result"); }} />}
-        {sView === "result" && <QuizResult result={result} onAgain={() => setSView("quiz")} onHome={() => setSView("home")} />}
+        <TopBar role="student" onLogout={logout} right={topBarRight} />
+        {sView === "assessment"   && <Assessment studentId={1} accommodationFlags={[]} onDone={finishAssessment} />}
+        {sView === "home"         && <StudentHome prefs={prefs} onOpen={openCourse} />}
+        {sView === "courseDetail" && <CourseDetail course={course} history={history} onSelectTopic={openTopic} onBack={() => setSView("home")} />}
+        {sView === "lesson"       && <Lesson course={course} topic={activeTopic} mode={mode} setMode={setMode}
+                                       onQuiz={() => setSView("quiz")} onBack={() => setSView("courseDetail")} />}
+        {sView === "quiz"         && <Quiz topic={activeTopic} mode={mode} onBack={() => setSView("lesson")}
+                                       onDone={(r) => {
+                                         setHistory((prev) => ({ ...prev, [activeTopic.id]: [...(prev[activeTopic.id] || []), ...r.attempts] }));
+                                         setResult(r);
+                                         setSView("result");
+                                       }} />}
+        {sView === "result"       && <QuizResult result={result} onAgain={() => setSView("quiz")} onHome={() => setSView("courseDetail")} />}
       </>
     );
   } else {
