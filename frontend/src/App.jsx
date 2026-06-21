@@ -229,6 +229,7 @@ export default function App() {
           <IepRoster
             onStudent={(s) => { setActiveStudent(s); setTView("student"); }}
             onIepLoad={handleIepLoad}
+            onBack={() => setTView("catalog")}
           />
         )}
       </>

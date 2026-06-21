@@ -1,5 +1,5 @@
 import { useState, useRef } from "react";
-import { Upload, Loader, CheckCircle, AlertCircle, Users, Brain, FileText } from "lucide-react";
+import { Upload, Loader, CheckCircle, AlertCircle, Users, Brain, FileText, ChevronLeft } from "lucide-react";
 import { C, FONT, DISPLAY, MONO } from "../../constants/tokens";
 import { STUDENTS } from "../../constants/data";
 import { Card } from "../../components/Card";
@@ -169,7 +169,7 @@ function StudentIepCard({ student, onStudent, onIepLoad }) {
   );
 }
 
-export function IepRoster({ onStudent, onIepLoad }) {
+export function IepRoster({ onStudent, onIepLoad, onBack }) {
   const [loadedCount, setLoadedCount] = useState(0);
 
   const handleIep = (studentId, flags) => {
@@ -179,6 +179,24 @@ export function IepRoster({ onStudent, onIepLoad }) {
 
   return (
     <div style={{ maxWidth: 920, margin: "0 auto", padding: "30px 22px" }}>
+      {/* Back button */}
+      {onBack && (
+        <button
+          onClick={onBack}
+          style={{
+            display: "inline-flex", alignItems: "center", gap: 6,
+            border: "none", background: "transparent", cursor: "pointer",
+            fontFamily: FONT, fontWeight: 600, fontSize: 14, color: C.sub,
+            padding: "6px 0", marginBottom: 16,
+            transition: "color .15s",
+          }}
+          onMouseEnter={(e) => (e.currentTarget.style.color = C.brand)}
+          onMouseLeave={(e) => (e.currentTarget.style.color = C.sub)}
+        >
+          <ChevronLeft size={16} /> My courses
+        </button>
+      )}
+
       {/* Header */}
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between",
         flexWrap: "wrap", gap: 14, marginBottom: 24 }}>
