@@ -82,6 +82,7 @@ export function ChatBot({ course }) {
         body: JSON.stringify({
           message: text,
           history,
+          courseId: course.id,
           courseTitle: course.title,
           topics: course.topics.map((t) => ({
             title: t.title,
