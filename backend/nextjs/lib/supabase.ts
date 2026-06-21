@@ -30,9 +30,10 @@ export interface User {
 
 export interface Document {
   id: string;
-  teacher_id: string;
   title: string;
   file_url: string;
+  course_id: string | null;
+  uploaded_by: string | null;
   created_at: string;
 }
 
