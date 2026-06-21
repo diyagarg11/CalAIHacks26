@@ -15,6 +15,7 @@ import { Eyebrow } from "../../components/Eyebrow";
 import { Avatar } from "../../components/Avatar";
 import { Stat } from "./Stat";
 import { StudentTable } from "./StudentTable";
+import { useAuth } from "../../auth/AuthProvider";
 
 const chartTip = {
   contentStyle: { fontFamily: FONT, fontSize: 12, borderRadius: 10, border: `1px solid ${C.line}` },
@@ -29,7 +30,7 @@ function fmt(bytes) {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-function UploadModal({ onClose }) {
+function UploadModal({ onClose, courseId, userId }) {
   const [files, setFiles] = useState([]);
   const [status, setStatus] = useState("idle"); // idle | uploading | done | error
   const [uploaded, setUploaded] = useState([]);
@@ -53,10 +54,16 @@ function UploadModal({ onClose }) {
     setStatus("uploading");
     const body = new FormData();
     files.forEach((f) => body.append("files", f));
+    if (courseId) body.append("courseId", courseId);
+    if (userId) body.append("uploadedBy", userId);
     try {
       const res = await fetch(`${BASE}/api/upload`, { method: "POST", body });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Upload failed");
+      const text = await res.text();
+      let data;
+      try { data = JSON.parse(text); } catch {
+        throw new Error(`Server error (${res.status}): ${text.slice(0, 200)}`);
+      }
+      if (!res.ok) throw new Error(data.error || `Upload failed (${res.status})`);
       setUploaded(data.files);
       setStatus("done");
     } catch (e) {
@@ -83,7 +90,7 @@ function UploadModal({ onClose }) {
         {status === "done" ? (
           <div>
             <div style={{ fontFamily: FONT, fontSize: 15, color: C.ink, marginBottom: 14 }}>
-              {uploaded.length} file{uploaded.length !== 1 ? "s" : ""} uploaded successfully.
+              {uploaded.length} file{uploaded.length !== 1 ? "s" : ""} uploaded and embedded successfully.
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               {uploaded.map((f) => (
@@ -91,7 +98,10 @@ function UploadModal({ onClose }) {
                   background: C.paper, borderRadius: 10, border: `1px solid ${C.line}` }}>
                   <FileText size={16} color={C.brand} />
                   <span style={{ flex: 1, fontFamily: FONT, fontSize: 14, color: C.ink }}>{f.name}</span>
-                  <span style={{ fontFamily: MONO, fontSize: 11, color: C.faint }}>{fmt(f.size)}</span>
+                  <span style={{ fontFamily: MONO, fontSize: 11, color: C.faint, marginRight: 6 }}>{fmt(f.size)}</span>
+                  {f.chunksEmbedded > 0
+                    ? <CheckCircle2 size={14} color={C.visual} title={`${f.chunksEmbedded} chunks embedded`} />
+                    : <AlertTriangle size={14} color={C.audio} title="Stored but not embedded — check backend logs" />}
                 </div>
               ))}
             </div>
@@ -161,6 +171,7 @@ function UploadModal({ onClose }) {
 
 export function TeacherDashboard({ course, onBack, onStudent }) {
   const { kpis, topics, chatbot, accuracyOverTime, reteach } = course;
+  const { user } = useAuth();
   const flagged = STUDENTS.filter((s) => s.status === "needs-support");
   const [showUpload, setShowUpload] = useState(false);
 
@@ -315,7 +326,13 @@ export function TeacherDashboard({ course, onBack, onStudent }) {
         </>
       )}
 
-      {showUpload && <UploadModal onClose={() => setShowUpload(false)} />}
+      {showUpload && (
+        <UploadModal
+          onClose={() => setShowUpload(false)}
+          courseId={course.id}
+          userId={user?.id}
+        />
+      )}
     </div>
   );
 }
