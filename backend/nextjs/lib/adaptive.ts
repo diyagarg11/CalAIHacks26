@@ -10,7 +10,7 @@ export const ACCOMMODATION_RULES: Record<string, { label: string; mandate?: stri
   extended_time:            { label: "Extended quiz time",       constraint: true },
 };
 
-export const DIAGNOSTIC_FORMATS = ["text", "audio"] as const;
+export const DIAGNOSTIC_FORMATS = ["text", "audio", "visual"] as const;
 export type DiagnosticFormat = (typeof DIAGNOSTIC_FORMATS)[number];
 export type LearningFormat = "text" | "audio" | "visual";
 
@@ -57,7 +57,6 @@ export function buildAssessmentRecord(params: {
   createdAt: string;
 }) {
   const { studentId, accommodation, scores, createdAt } = params;
-  const visualSeed = { visual: null };
 
   if (accommodation.mandatedFormat) {
     return {
@@ -66,7 +65,7 @@ export function buildAssessmentRecord(params: {
       status: "skipped_accommodation" as const,
       decided_by: "accommodation" as const,
       assigned_format: accommodation.mandatedFormat,
-      scores: { text: null, audio: null, ...visualSeed },
+      scores: { text: null, audio: null, visual: null },
       accommodation: { applied: accommodation.applied, mandatedFormat: accommodation.mandatedFormat },
     };
   }
@@ -83,7 +82,7 @@ export function buildAssessmentRecord(params: {
     status: "completed" as const,
     decided_by: "diagnostic" as const,
     assigned_format: assigned,
-    scores: { ...withPct, ...visualSeed },
+    scores: { ...withPct },
     accommodation: accommodation.applied.length
       ? { applied: accommodation.applied, mandatedFormat: null }
       : null,
@@ -122,6 +121,26 @@ export const DIAGNOSTIC_LESSON = {
         { q: "Roughly how many Nobel Prize winners has Berkeley produced?", options: ["About 5", "About 25", "Over 107", "None — they all went to Stanford"], correct: 2 },
         { q: "What did students fight for in the Free Speech Movement?", options: ["Free burritos on Fridays", "The right to hand out political pamphlets on campus", "Longer winter break", "Better Wi-Fi in the library"], correct: 1 },
         { q: "What are UC Berkeley's sports teams called?", options: ["The Blue Bears", "The California Grizzlies", "The Golden Bears", "The Bay Bears"], correct: 2 },
+      ],
+    },
+    visual: {
+      kind: "visual",
+      title: "Harvard University — By the Numbers",
+      highlights: [
+        { label: "Founded",         value: "1636",                  note: "Oldest university in the United States" },
+        { label: "Location",        value: "Cambridge, MA",          note: "Across the Charles River from Boston" },
+        { label: "Library",         value: "20M+ volumes",           note: "Largest academic library in the world" },
+        { label: "Nobel Laureates", value: "161+",                   note: "More than any other university" },
+        { label: "Endowment",       value: "$50B+",                  note: "Largest university endowment globally" },
+        { label: "School Color",    value: "Crimson",                note: "Teams are called the Harvard Crimson" },
+        { label: "Famous Alumni",   value: "Obama · JFK · Portman",  note: "Multiple US presidents attended" },
+        { label: "Famous Dropouts", value: "Gates · Zuckerberg",     note: "Left to found Microsoft and Facebook" },
+      ],
+      quiz: [
+        { q: "According to the infographic, when was Harvard founded?", options: ["1776", "1636", "1901", "1492"], correct: 1 },
+        { q: "What does the chart show about Harvard's library?", options: ["It has the newest books in the US", "It has over 20 million volumes — the largest academic library in the world", "It was founded before the university", "It only accepts Harvard students"], correct: 1 },
+        { q: "Which famous figures are listed as Harvard dropouts in the infographic?", options: ["Obama and JFK", "Bill Gates and Mark Zuckerberg", "Natalie Portman and Barack Obama", "Larry Page and Sergey Brin"], correct: 1 },
+        { q: "According to the stat cards, how many Nobel laureates has Harvard produced?", options: ["About 10", "Over 50", "161+", "None — they all went to Stanford"], correct: 2 },
       ],
     },
   },

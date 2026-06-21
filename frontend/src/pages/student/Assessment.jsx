@@ -163,6 +163,44 @@ function TextPanel({ body }) {
   );
 }
 
+function VisualPanel({ highlights, title }) {
+  const accentColors = [C.brand, C.audio, C.visual, C.brand, C.audio, C.visual, C.brand, C.audio];
+  return (
+    <div>
+      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
+        <div style={{ flex: 1, height: 2, background: `linear-gradient(90deg, ${C.brand}, ${C.audio}, ${C.visual})`, borderRadius: 999 }} />
+        <span style={{ fontFamily: MONO, fontSize: 10, fontWeight: 700, color: C.visual, letterSpacing: 1 }}>VISUAL MODE</span>
+        <div style={{ flex: 1, height: 2, background: `linear-gradient(90deg, ${C.visual}, ${C.audio}, ${C.brand})`, borderRadius: 999 }} />
+      </div>
+      <p style={{ fontFamily: FONT, fontSize: 13, color: C.sub, margin: "0 0 16px", lineHeight: 1.5 }}>
+        Study these facts carefully — your quiz will ask about what you see here.
+      </p>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+        {highlights.map((h, i) => {
+          const color = accentColors[i % accentColors.length];
+          return (
+            <div key={h.label} style={{
+              background: color + "10", borderRadius: 12,
+              border: `1.5px solid ${color}30`, padding: "14px 14px 12px",
+            }}>
+              <div style={{ fontFamily: MONO, fontSize: 9, fontWeight: 700, color: color,
+                letterSpacing: 1, textTransform: "uppercase", marginBottom: 4 }}>
+                {h.label}
+              </div>
+              <div style={{ fontFamily: DISPLAY, fontWeight: 800, fontSize: 18, color: C.ink, lineHeight: 1.1, marginBottom: 4 }}>
+                {h.value}
+              </div>
+              <div style={{ fontFamily: FONT, fontSize: 11.5, color: C.sub, lineHeight: 1.4 }}>
+                {h.note}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 export function Assessment({ studentId = 1, accommodationFlags = [], onDone }) {
   const [phase, setPhase] = useState("loading");
   const [flow, setFlow] = useState(null);          // { skip, order, lesson, accommodation, online }
@@ -318,7 +356,9 @@ export function Assessment({ studentId = 1, accommodationFlags = [], onDone }) {
         </div>
         <h1 style={{ fontFamily: DISPLAY, fontWeight: 800, fontSize: 24, color: C.ink, margin: "0 0 16px" }}>{fmt.title}</h1>
         <Card style={{ padding: 24, minHeight: 180, borderTop: `3px solid ${m.color}` }}>
-          {currentFormat === "audio" ? <AudioPanel script={fmt.script} /> : <TextPanel body={fmt.body} />}
+          {currentFormat === "audio"  && <AudioPanel script={fmt.script} />}
+          {currentFormat === "text"   && <TextPanel body={fmt.body} />}
+          {currentFormat === "visual" && <VisualPanel highlights={fmt.highlights} title={fmt.title} />}
         </Card>
         <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 22 }}>
           <Button onClick={startQuiz} color={m.color}>I'm ready — quiz me <ArrowRight size={16} /></Button>
@@ -332,7 +372,7 @@ export function Assessment({ studentId = 1, accommodationFlags = [], onDone }) {
     const m = MODES[currentFormat];
     const answered = picked !== null;
     const last = qi + 1 === flow.lesson.formats[currentFormat].quiz.length;
-    const isAudio = currentFormat === "audio";
+    const isAudio = currentFormat === "audio"; // visual + text both use MCQ
     return (
       <div style={WRAP}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
@@ -383,7 +423,7 @@ export function Assessment({ studentId = 1, accommodationFlags = [], onDone }) {
           )}
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 20 }}>
             <span style={{ fontFamily: FONT, fontSize: 13, color: C.faint }}>
-              {isAudio ? "Speak your answer or select an option, then press Next." : "No feedback yet — we score both formats at the end."}
+              {isAudio ? "Speak your answer or select an option, then press Next." : "No feedback yet — we score all formats at the end."}
             </span>
             <Button onClick={nextQuestion} disabled={!answered} color={m.color}
               style={{ opacity: answered ? 1 : 0.45 }}>
