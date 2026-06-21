@@ -7,6 +7,23 @@ export const EMBEDDING_DIMS = 1536;
 const EMB_TTL = 60 * 60 * 24 * 7;  // 7 days — embeddings are stable
 const DOC_TTL = 60 * 60 * 48;       // 48 hours — chunk lists for retrieval
 
+// ── Document chunk interface (declared early so L1 cache can reference it) ─
+
+export interface CachedChunk {
+  document_id: string;
+  title: string;
+  content: string;
+  chunk_index: number;
+  embedding: number[];
+}
+
+// ── In-process L1 caches ──────────────────────────────────────────────────
+// These survive for the lifetime of the Next.js server process. They sit in
+// front of Upstash Redis so that repeated questions within the same session
+// never pay a network round-trip — critical when Redis isn't configured.
+const embL1 = new Map<string, number[]>();
+const docL1 = new Map<string, CachedChunk[]>();
+
 let _openai: OpenAI | null = null;
 
 function getOpenAI(): OpenAI {
@@ -39,9 +56,17 @@ async function redisSet(key: string, value: unknown, ttl: number): Promise<void>
 // ── Embedding ──────────────────────────────────────────────────────────────
 
 export async function embedOne(text: string): Promise<number[]> {
-  const cached = await redisGet<number[]>(embKey(text));
-  if (cached) return cached;
+  const key = embKey(text);
 
+  // L1: in-process map (zero latency)
+  const l1 = embL1.get(key);
+  if (l1) return l1;
+
+  // L2: Upstash Redis (fast network, persistent across restarts)
+  const l2 = await redisGet<number[]>(key);
+  if (l2) { embL1.set(key, l2); return l2; }
+
+  // L3: OpenAI API
   const res = await getOpenAI().embeddings.create({
     model: EMBEDDING_MODEL,
     input: text,
@@ -49,7 +74,8 @@ export async function embedOne(text: string): Promise<number[]> {
   });
   const vector = res.data[0].embedding;
 
-  redisSet(embKey(text), vector, EMB_TTL); // fire-and-forget
+  embL1.set(key, vector);
+  redisSet(key, vector, EMB_TTL); // fire-and-forget
   return vector;
 }
 
@@ -68,25 +94,27 @@ export async function embedBatch(texts: string[], concurrency = 20): Promise<num
 
 // Write-back after confirmed DB write — repairs any dropped cache entries
 export async function cacheEmbedding(text: string, vector: number[]): Promise<void> {
+  embL1.set(embKey(text), vector);
   await redisSet(embKey(text), vector, EMB_TTL);
 }
 
 // ── Document chunk cache ───────────────────────────────────────────────────
 
-export interface CachedChunk {
-  document_id: string;
-  title: string;
-  content: string;
-  chunk_index: number;
-  embedding: number[];
-}
-
 export async function cacheDocumentChunks(documentId: string, chunks: CachedChunk[]): Promise<void> {
-  await redisSet(docKey(documentId), chunks, DOC_TTL);
+  docL1.set(documentId, chunks);                        // L1: instant
+  redisSet(docKey(documentId), chunks, DOC_TTL);        // L2: fire-and-forget
 }
 
 export async function getDocumentChunks(documentId: string): Promise<CachedChunk[] | null> {
-  return redisGet<CachedChunk[]>(docKey(documentId));
+  // L1 hit — no network at all
+  const l1 = docL1.get(documentId);
+  if (l1) return l1;
+
+  // L2 hit — Redis (if configured)
+  const l2 = await redisGet<CachedChunk[]>(docKey(documentId));
+  if (l2) { docL1.set(documentId, l2); return l2; }
+
+  return null;
 }
 
 // ── Similarity ─────────────────────────────────────────────────────────────
