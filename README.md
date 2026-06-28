@@ -1,6 +1,6 @@
 # Triad — Adaptive Learning Platform
 
-An AI-powered platform that teaches every student in the format they learn best — **text, audio, or visual** — measured by a diagnostic assessment, not self-reported. Teachers upload materials; the system generates multimodal content and tracks per-student performance.
+An AI-powered platform that teaches every student in the format they learn best (**text, audio, or visual**) measured by a diagnostic assessment, not self-reported. Teachers upload materials and the system generates multimodal content and tracks per-student performance.
 
 ---
 
