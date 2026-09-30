@@ -1,8 +1,6 @@
 # Triad — Adaptive Learning Platform
 
-An AI-powered platform that teaches every student in the format they learn best (**text, audio, or visual**) measured by a diagnostic assessment, not self-reported. Teachers upload materials and the system generates multimodal content and tracks per-student performance.
-
----
+An AI-powered platform that teaches every student in the format they learn best (text, audio, or visual), measured by a diagnostic assessment rather than self-reported. Teachers upload materials, and the system generates multimodal content and tracks per-student performance.
 
 ## Tech stack
 
@@ -12,28 +10,24 @@ An AI-powered platform that teaches every student in the format they learn best 
 | Backend | Next.js 16 App Router (API routes) |
 | Database | Supabase (Postgres + Storage) |
 | Cache / State | Upstash Redis |
-| AI content | Anthropic Claude (`claude-opus-4-8`) |
+| AI content | Anthropic Claude (claude-opus-4-8) |
 | AI chat | OpenAI GPT-4o mini |
 | Speech | Deepgram (TTS + STT) |
 
----
-
 ## Prerequisites
 
-- **Node.js 18+**
-- **Supabase** project — [supabase.com](https://supabase.com) (free tier works)
-- **Upstash Redis** database — [console.upstash.com](https://console.upstash.com) (free tier works)
-- **OpenAI API key** — for the student AI tutor chatbot
-- **Anthropic API key** _(optional)_ — for multimodal content generation
-- **Deepgram API key** _(optional)_ — for audio narration + voice quiz answers
-
----
+- Node.js 18+
+- Supabase project: [supabase.com](https://supabase.com) (free tier works)
+- Upstash Redis database: [console.upstash.com](https://console.upstash.com) (free tier works)
+- OpenAI API key, for the student AI tutor chatbot
+- Anthropic API key (optional), for multimodal content generation
+- Deepgram API key (optional), for audio narration and voice quiz answers
 
 ## Quick start
 
-Open **two terminals**.
+Open two terminals.
 
-### Terminal 1 — Backend (port 3000)
+**Terminal 1: Backend (port 3000)**
 
 ```bash
 cd backend/nextjs
@@ -48,12 +42,13 @@ npm run dev
 ```
 
 Verify it's working:
+
 ```
 http://localhost:3000/api/health
 → { "status": "ok", "supabase": "connected" }
 ```
 
-### Terminal 2 — Frontend (port 5173)
+**Terminal 2: Frontend (port 5173)**
 
 ```bash
 cd frontend
@@ -61,23 +56,19 @@ npm install
 npm run dev
 ```
 
-Open **http://localhost:5173** in your browser.
+Open http://localhost:5173 in your browser.
 
-The frontend automatically proxies all `/api` calls to the backend on :3000 — no extra config needed.
-
----
+The frontend automatically proxies all `/api` calls to the backend on `:3000`, so no extra config is needed.
 
 ## First-time database setup
 
-Before running the backend, you need to create the database tables:
+Before running the backend, create the database tables:
 
 1. Go to your Supabase project → **SQL Editor** → **New query**
-2. Paste the entire contents of [`backend/nextjs/schema.sql`](./backend/nextjs/schema.sql)
+2. Paste the entire contents of `backend/nextjs/schema.sql`
 3. Click **Run**
 
-This creates all tables, indexes, seeds 3 demo students, and sets up the storage bucket for PDF uploads.
-
----
+This creates all tables and indexes, seeds 3 demo students, and sets up the storage bucket for PDF uploads.
 
 ## Environment variables
 
@@ -94,13 +85,13 @@ cp backend/nextjs/.env.local.example backend/nextjs/.env.local
 | `SUPABASE_SERVICE_ROLE_KEY` | Yes | Supabase → Settings → API → Secret key |
 | `UPSTASH_REDIS_REST_URL` | Yes | Upstash → your DB → REST API tab |
 | `UPSTASH_REDIS_REST_TOKEN` | Yes | Upstash → your DB → REST API tab |
-| `OPENAI_API_KEY` | Yes | platform.openai.com — powers the AI tutor chatbot |
-| `ANTHROPIC_API_KEY` | Optional | console.anthropic.com — enables content generation |
-| `DEEPGRAM_API_KEY` | Optional | deepgram.com — enables audio narration + voice answers |
+| `OPENAI_API_KEY` | Yes | platform.openai.com (powers the AI tutor chatbot) |
+| `ANTHROPIC_API_KEY` | Optional | console.anthropic.com (enables content generation) |
+| `DEEPGRAM_API_KEY` | Optional | deepgram.com (enables audio narration and voice answers) |
 
-> Features degrade gracefully without optional keys — the app still runs, those specific endpoints return a clear error.
+Features degrade gracefully without the optional keys. The app still runs, and those specific endpoints return a clear error.
 
----
+> **Never commit `.env.local` or share it.** It contains your Supabase service-role key, which bypasses row-level security.
 
 ## Project structure
 
@@ -110,8 +101,8 @@ CalAIHacks26/
 │   ├── src/
 │   │   ├── components/        Shared UI (Button, Card, TopBar, ChatBot…)
 │   │   ├── constants/
-│   │   │   ├── tokens.js      Design tokens — all colors and fonts
-│   │   │   └── data.js        Mock course/topic data
+│   │   │   ├── tokens.js      Design tokens: all colors and fonts
+│   │   │   └── data.js        Mock course/topic data (see Known limitations)
 │   │   ├── pages/
 │   │   │   ├── Landing.jsx    Role-select screen
 │   │   │   ├── student/       Student flow (Assessment, CourseDetail, Lesson, Quiz…)
@@ -124,7 +115,7 @@ CalAIHacks26/
 ├── backend/
 │   └── nextjs/                Next.js API server
 │       ├── app/api/
-│       │   ├── health/        GET  — Supabase connection check
+│       │   ├── health/        GET: Supabase connection check
 │       │   ├── assessment/    Diagnostic lesson + grading + history
 │       │   ├── content/       Claude multimodal pipeline
 │       │   ├── speech/        Deepgram TTS + STT proxy
@@ -146,8 +137,6 @@ CalAIHacks26/
 └── Images/                    Logo source assets
 ```
 
----
-
 ## Demo students (seeded by schema.sql)
 
 | Name | UUID prefix | Accommodation | Assigned format |
@@ -156,12 +145,15 @@ CalAIHacks26/
 | Liam Patel | `22222222-…` | `audio_narration_required` → skips diagnostic | audio |
 | Sofia Reyes | `33333333-…` | `captions_required` (constraint only) → runs diagnostic | text |
 
----
+## Known limitations
 
-## Sharing with teammates
+- Course and topic data shown in the UI is currently mocked in `frontend/src/constants/data.js` rather than served from the backend.
 
-The fastest way to onboard a teammate:
+## Contributing
 
-1. Share your `backend/nextjs/.env.local` file directly — they can point to the same Supabase + Redis project without creating their own accounts
-2. They run `npm install` in both `frontend/` and `backend/nextjs/`
-3. They do **not** need to re-run `schema.sql` if the database is already set up
+To set up a local copy:
+
+1. Create your own Supabase project and Upstash Redis database (both free tiers work).
+2. Copy `backend/nextjs/.env.local.example` to `.env.local` and fill in your own keys.
+3. Run `schema.sql` in your Supabase project (see [First-time database setup](#first-time-database-setup)).
+4. Run `npm install` in both `frontend/` and `backend/nextjs/`.
